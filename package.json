@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "description": "DNxHD/DNxHR decoding and MXF demuxing for browsers",
   "type": "module",
-  "main": "./dist/turbovc3.js",
-  "module": "./dist/turbovc3.js",
-  "types": "./dist/turbovc3.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/turbovc3.d.ts",
-      "import": "./dist/turbovc3.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./mxf": {
       "types": "./dist/mxf/index.d.ts",
@@ -21,6 +21,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
     "check": "tsc --noEmit -p tsconfig.json",
     "build:wasm-kernel": "bash scripts/build-dnx-wasm.sh",
     "build:zig-wasm": "bash scripts/build-dnx-zig-wasm.sh",
