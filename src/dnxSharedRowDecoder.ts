@@ -39,7 +39,7 @@ export class DnxSharedRowDecoder {
 
   static async create(concurrency: number): Promise<DnxSharedRowDecoder> {
     const slots = Array.from({ length: Math.max(1, concurrency) }, () => ({
-      worker: new Worker(new URL("./workers/dnxSharedRowDecode.worker.ts", import.meta.url), { type: "module" }),
+      worker: new Worker(new URL("./workers/dnxSharedRowDecode.worker.js", import.meta.url), { type: "module" }),
       failed: false
     }));
     const pool = new DnxSharedRowDecoder(slots);

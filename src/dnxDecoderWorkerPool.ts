@@ -38,7 +38,7 @@ export class DnxDecoderWorkerPool {
 
   static async create(options: Required<DecoderOptions>): Promise<DnxDecoderWorkerPool> {
     const slots = Array.from({ length: options.concurrency }, () => ({
-      worker: new Worker(new URL("./workers/dnxPacketDecode.worker.ts", import.meta.url), { type: "module" }),
+      worker: new Worker(new URL("./workers/dnxPacketDecode.worker.js", import.meta.url), { type: "module" }),
       load: 0,
       failed: false
     }));
