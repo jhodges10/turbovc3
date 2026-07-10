@@ -1,0 +1,626 @@
+import { hex, readI64BE, readU16BE, readU32BE, readU64BE, safeNumber, signedByte, utf16Be } from "./mxfBinary";
+import { toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource";
+import type {
+  MxfDemuxResult,
+  MxfDescriptor,
+  MxfEssenceElement,
+  MxfIndexEntry,
+  MxfIndexTableSegment,
+  MxfKlvPacket,
+  MxfLocalSetItem,
+  MxfMetadataSet,
+  MxfPacket,
+  MxfPartition,
+  MxfPartitionKind,
+  MxfRandomIndexEntry,
+  MxfRational,
+  MxfTrack,
+  MxfTrackKind
+} from "./mxfTypes";
+
+const KLV_PREFIX = [0x06, 0x0e, 0x2b, 0x34] as const;
+const PARTITION_PREFIX = "060e2b34020501010d01020101";
+const PRIMER_KEY = "060e2b34020501010d01020101050100";
+const RANDOM_INDEX_KEY = "060e2b34020501010d01020101110100";
+const INDEX_TABLE_KEY = "060e2b34025301010d01020101100100";
+const GENERIC_ESSENCE_PREFIX = "060e2b34010201010d010301";
+const AVID_ESSENCE_PREFIX = "060e2b34010201010e040301";
+const CANOPUS_ESSENCE_PREFIX = "060e2b340102010a0e0f0301";
+const MAX_METADATA_VALUE_BYTES = 64 * 1024 * 1024;
+const RESYNC_CHUNK_BYTES = 64 * 1024;
+
+const METADATA_TYPES = new Map<string, string>([
+  ["060e2b34025301010d01010101012f00", "Preface"],
+  ["060e2b34025301010d01010101013000", "Identification"],
+  ["060e2b34025301010d01010101011800", "ContentStorage"],
+  ["060e2b34025301010d01010101013700", "SourcePackage"],
+  ["060e2b34025301010d01010101013600", "MaterialPackage"],
+  ["060e2b34025301010d01010101010f00", "Sequence"],
+  ["060e2b34025301010d01010101011100", "SourceClip"],
+  ["060e2b34025301010d01010101014400", "MultipleDescriptor"],
+  ["060e2b34025301010d01010101014200", "GenericSoundDescriptor"],
+  ["060e2b34025301010d01010101012800", "CDCIDescriptor"],
+  ["060e2b34025301010d01010101012900", "RGBADescriptor"],
+  ["060e2b34025301010d01010101014800", "WaveAudioDescriptor"],
+  ["060e2b34025301010d01010101014700", "AES3AudioDescriptor"],
+  ["060e2b34025301010d01010101015100", "MpegVideoDescriptor"],
+  ["060e2b34025301010d01010101013a00", "StaticTrack"],
+  ["060e2b34025301010d01010101013b00", "Track"],
+  ["060e2b34025301010d01010101011400", "TimecodeComponent"],
+  ["060e2b34025301010d01010101012300", "EssenceContainerData"],
+  [INDEX_TABLE_KEY, "IndexTableSegment"]
+]);
+
+export interface MxfDemuxOptions {
+  signal?: AbortSignal;
+}
+
+export class MxfDemuxer {
+  readonly result: MxfDemuxResult;
+
+  private constructor(result: MxfDemuxResult) {
+    this.result = result;
+  }
+
+  static async open(input: MxfSourceInput, options: MxfDemuxOptions = {}): Promise<MxfDemuxer> {
+    const source = toMxfSource(input);
+    return new MxfDemuxer(await demuxMxfSource(source, options));
+  }
+
+  get tracks(): readonly MxfTrack[] {
+    return this.result.tracks;
+  }
+
+  get packets(): readonly MxfPacket[] {
+    return this.result.packets;
+  }
+
+  packetsForTrack(track: MxfTrack | number): readonly MxfPacket[] {
+    const trackNumber = typeof track === "number" ? track : track.number;
+    return this.result.packets.filter((packet) => packet.track.number === trackNumber);
+  }
+
+  async readPacket(packet: MxfPacket): Promise<Uint8Array> {
+    return this.result.source.read(packet.byteOffset, packet.byteLength);
+  }
+}
+
+export async function demuxMxf(input: MxfSourceInput, options: MxfDemuxOptions = {}): Promise<MxfDemuxResult> {
+  return demuxMxfSource(toMxfSource(input), options);
+}
+
+async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Promise<MxfDemuxResult> {
+  const partitions: MxfPartition[] = [];
+  const klvPackets: MxfKlvPacket[] = [];
+  const primer = new Map<number, string>();
+  const metadataSets: MxfMetadataSet[] = [];
+  const essenceElements: MxfEssenceElement[] = [];
+  const indexTableSegments: MxfIndexTableSegment[] = [];
+  let randomIndex: MxfRandomIndexEntry[] = [];
+  let operationalPattern: string | null = null;
+  let currentBodySid = 0;
+  let offset = 0;
+
+  while (offset + 17 <= source.size) {
+    throwIfAborted(options.signal);
+    const klv = await readKlvAt(source, offset);
+    if (!klv) {
+      const next = await findNextKlv(source, offset + 1);
+      if (next === null) {
+        break;
+      }
+      offset = next;
+      continue;
+    }
+    klvPackets.push(klv);
+
+    if (isPartitionKey(klv)) {
+      const partition = await parsePartition(source, klv);
+      partitions.push(partition);
+      currentBodySid = partition.bodySid;
+      operationalPattern ??= partition.operationalPattern;
+    } else if (klv.keyHex === PRIMER_KEY) {
+      for (const [tag, propertyUl] of await parsePrimer(source, klv)) {
+        primer.set(tag, propertyUl);
+      }
+    } else if (isEssenceKey(klv.keyHex)) {
+      const trackNumber = readU32BE(klv.key, 12);
+      essenceElements.push({
+        index: essenceElements.length,
+        trackNumber,
+        trackNumberHex: trackNumber.toString(16).padStart(8, "0"),
+        itemType: klv.key[12],
+        elementCount: klv.key[13],
+        elementType: klv.key[14],
+        elementNumber: klv.key[15],
+        bodySid: currentBodySid,
+        klv
+      });
+    } else if (klv.keyHex === RANDOM_INDEX_KEY) {
+      randomIndex = await parseRandomIndex(source, klv);
+    } else {
+      const metadataType = METADATA_TYPES.get(klv.keyHex);
+      if (metadataType) {
+        const set = await parseMetadataSet(source, klv, metadataType, primer);
+        metadataSets.push(set);
+        if (klv.keyHex === INDEX_TABLE_KEY) {
+          indexTableSegments.push(parseIndexTable(set));
+        }
+      }
+    }
+
+    offset = klv.nextOffset;
+  }
+
+  const descriptors = metadataSets
+    .filter((set) => set.type.endsWith("Descriptor"))
+    .map(parseDescriptor);
+  const tracks = buildTracks(metadataSets, descriptors, essenceElements);
+  const packets = buildPackets(tracks, essenceElements, indexTableSegments);
+  for (const track of tracks) {
+    track.packetCount = packets.filter((packet) => packet.track.number === track.number).length;
+  }
+
+  return {
+    source,
+    operationalPattern,
+    klvPackets,
+    partitions,
+    primer,
+    metadataSets,
+    descriptors,
+    tracks,
+    essenceElements,
+    indexTableSegments,
+    randomIndex,
+    packets
+  };
+}
+
+async function readKlvAt(source: MxfSource, offset: number): Promise<MxfKlvPacket | null> {
+  const available = Math.min(25, source.size - offset);
+  if (available < 17) {
+    return null;
+  }
+  const header = await source.read(offset, available);
+  if (!matchesPrefix(header, 0, KLV_PREFIX)) {
+    return null;
+  }
+
+  const firstLengthByte = header[16];
+  const longForm = (firstLengthByte & 0x80) !== 0;
+  const lengthBytes = longForm ? firstLengthByte & 0x7f : 0;
+  if (longForm && (lengthBytes === 0 || lengthBytes > 8 || 17 + lengthBytes > header.length)) {
+    return null;
+  }
+  const lengthFieldLength = longForm ? 1 + lengthBytes : 1;
+  let valueLength = BigInt(longForm ? 0 : firstLengthByte);
+  for (let index = 0; index < lengthBytes; index += 1) {
+    valueLength = (valueLength << 8n) | BigInt(header[17 + index]);
+  }
+  const numericLength = safeNumber(valueLength);
+  const valueOffset = offset + 16 + lengthFieldLength;
+  const nextOffset = valueOffset + numericLength;
+  if (nextOffset > source.size) {
+    throw new Error(`MXF KLV at ${offset} extends beyond the ${source.size}-byte source.`);
+  }
+  const key = header.slice(0, 16);
+  return {
+    offset,
+    key,
+    keyHex: hex(key),
+    lengthFieldLength,
+    valueOffset,
+    valueLength: numericLength,
+    nextOffset
+  };
+}
+
+async function findNextKlv(source: MxfSource, start: number): Promise<number | null> {
+  let offset = start;
+  while (offset + KLV_PREFIX.length <= source.size) {
+    const length = Math.min(RESYNC_CHUNK_BYTES, source.size - offset);
+    const bytes = await source.read(offset, length);
+    for (let index = 0; index <= bytes.length - KLV_PREFIX.length; index += 1) {
+      if (matchesPrefix(bytes, index, KLV_PREFIX)) {
+        return offset + index;
+      }
+    }
+    if (length <= KLV_PREFIX.length) {
+      break;
+    }
+    offset += length - (KLV_PREFIX.length - 1);
+  }
+  return null;
+}
+
+async function parsePartition(source: MxfSource, klv: MxfKlvPacket): Promise<MxfPartition> {
+  if (klv.valueLength < 80) {
+    throw new Error(`MXF partition pack at ${klv.offset} is only ${klv.valueLength} bytes.`);
+  }
+  const bytes = await source.read(klv.valueOffset, Math.min(klv.valueLength, 88));
+  const essenceContainers: string[] = [];
+  if (bytes.length >= 88) {
+    const count = readU32BE(bytes, 80);
+    const itemLength = readU32BE(bytes, 84);
+    if (itemLength === 16 && klv.valueLength >= 88 + count * itemLength) {
+      const containerBytes = await source.read(klv.valueOffset + 88, count * itemLength);
+      for (let index = 0; index < count; index += 1) {
+        essenceContainers.push(hex(containerBytes.subarray(index * 16, index * 16 + 16)));
+      }
+    }
+  }
+  return {
+    kind: partitionKind(klv.key[13]),
+    status: klv.key[14],
+    offset: klv.offset,
+    majorVersion: readU16BE(bytes, 0),
+    minorVersion: readU16BE(bytes, 2),
+    kagSize: readU32BE(bytes, 4),
+    thisPartition: safeNumber(readU64BE(bytes, 8)),
+    previousPartition: safeNumber(readU64BE(bytes, 16)),
+    footerPartition: safeNumber(readU64BE(bytes, 24)),
+    headerByteCount: safeNumber(readU64BE(bytes, 32)),
+    indexByteCount: safeNumber(readU64BE(bytes, 40)),
+    indexSid: readU32BE(bytes, 48),
+    bodyOffset: safeNumber(readU64BE(bytes, 52)),
+    bodySid: readU32BE(bytes, 60),
+    operationalPattern: hex(bytes.subarray(64, 80)),
+    essenceContainers
+  };
+}
+
+async function parsePrimer(source: MxfSource, klv: MxfKlvPacket): Promise<Map<number, string>> {
+  const result = new Map<number, string>();
+  const bytes = await readMetadataValue(source, klv);
+  if (bytes.length < 8) {
+    return result;
+  }
+  const count = readU32BE(bytes, 0);
+  const itemLength = readU32BE(bytes, 4);
+  if (itemLength < 18 || 8 + count * itemLength > bytes.length) {
+    throw new Error(`Invalid MXF primer pack at ${klv.offset}.`);
+  }
+  for (let index = 0; index < count; index += 1) {
+    const offset = 8 + index * itemLength;
+    result.set(readU16BE(bytes, offset), hex(bytes.subarray(offset + 2, offset + 18)));
+  }
+  return result;
+}
+
+async function parseMetadataSet(
+  source: MxfSource,
+  klv: MxfKlvPacket,
+  type: string,
+  primer: ReadonlyMap<number, string>
+): Promise<MxfMetadataSet> {
+  const bytes = await readMetadataValue(source, klv);
+  const items: MxfLocalSetItem[] = [];
+  let offset = 0;
+  while (offset + 4 <= bytes.length) {
+    const localTag = readU16BE(bytes, offset);
+    const length = readU16BE(bytes, offset + 2);
+    offset += 4;
+    if (offset + length > bytes.length) {
+      throw new Error(`MXF local tag ${localTag.toString(16)} overruns ${type} at ${klv.offset}.`);
+    }
+    items.push({
+      localTag,
+      propertyUl: primer.get(localTag) ?? null,
+      value: bytes.slice(offset, offset + length)
+    });
+    offset += length;
+  }
+  const instanceUid = item(items, 0x3c0a);
+  return {
+    type,
+    key: klv.keyHex,
+    offset: klv.offset,
+    instanceUid: instanceUid && instanceUid.length >= 16 ? hex(instanceUid.subarray(0, 16)) : null,
+    items
+  };
+}
+
+function parseDescriptor(set: MxfMetadataSet): MxfDescriptor {
+  return {
+    instanceUid: set.instanceUid,
+    linkedTrackId: itemU32(set, 0x3006),
+    essenceContainerUl: itemHex(set, 0x3004),
+    codecUl: itemHex(set, 0x3201) ?? itemHex(set, 0x3d06) ?? itemHex(set, 0x3005),
+    width: itemU32(set, 0x3203),
+    height: itemU32(set, 0x3202),
+    aspectRatio: itemRational(set, 0x320e),
+    componentDepth: itemU32(set, 0x3301),
+    horizontalSubsampling: itemU32(set, 0x3302),
+    verticalSubsampling: itemU32(set, 0x3308),
+    sampleRate: itemRational(set, 0x3d03),
+    channels: itemU32(set, 0x3d07),
+    bitsPerSample: itemU32(set, 0x3d01),
+    duration: itemI64(set, 0x3002)
+  };
+}
+
+function buildTracks(
+  metadataSets: readonly MxfMetadataSet[],
+  descriptors: readonly MxfDescriptor[],
+  essence: readonly MxfEssenceElement[]
+): MxfTrack[] {
+  const essenceByTrack = groupBy(essence, (element) => element.trackNumber);
+  const sequences = new Map(metadataSets.filter((set) => set.type === "Sequence").map((set) => [set.instanceUid, set]));
+  const candidates = metadataSets
+    .filter((set) => set.type === "Track" || set.type === "StaticTrack")
+    .map((set): MxfTrack | null => {
+      const id = itemU32(set, 0x4801);
+      const numberBytes = item(set.items, 0x4804);
+      const editRate = itemRational(set, 0x4b01);
+      if (id === null || !numberBytes || numberBytes.length < 4 || !editRate) {
+        return null;
+      }
+      const number = readU32BE(numberBytes, 0);
+      const sequenceBytes = item(set.items, 0x4803);
+      const sequenceUid = sequenceBytes && sequenceBytes.length >= 16 ? hex(sequenceBytes.subarray(0, 16)) : null;
+      const sequence = sequenceUid ? sequences.get(sequenceUid) : null;
+      const elements = essenceByTrack.get(number) ?? [];
+      return {
+        id,
+        number,
+        numberHex: number.toString(16).padStart(8, "0"),
+        kind: kindForEssence(elements[0]),
+        name: itemString(set, 0x4802),
+        editRate,
+        origin: itemI64(set, 0x4b02) ?? 0,
+        duration: sequence ? itemI64(sequence, 0x0202) : null,
+        sequenceUid,
+        descriptor: descriptors.find((descriptor) => descriptor.linkedTrackId === id) ?? null,
+        bodySid: elements[0]?.bodySid ?? null,
+        packetCount: elements.length
+      };
+    })
+    .filter((track): track is MxfTrack => track !== null && track.packetCount > 0);
+
+  const byNumber = new Map<number, MxfTrack>();
+  for (const track of candidates) {
+    const existing = byNumber.get(track.number);
+    if (!existing || (track.descriptor && !existing.descriptor)) {
+      byNumber.set(track.number, track);
+    }
+  }
+  for (const [number, elements] of essenceByTrack) {
+    if (byNumber.has(number)) {
+      continue;
+    }
+    byNumber.set(number, {
+      id: number,
+      number,
+      numberHex: number.toString(16).padStart(8, "0"),
+      kind: kindForEssence(elements[0]),
+      name: null,
+      editRate: { numerator: 1, denominator: 1 },
+      origin: 0,
+      duration: elements.length,
+      sequenceUid: null,
+      descriptor: null,
+      bodySid: elements[0]?.bodySid ?? null,
+      packetCount: elements.length
+    });
+  }
+  return [...byNumber.values()];
+}
+
+function buildPackets(
+  tracks: readonly MxfTrack[],
+  essence: readonly MxfEssenceElement[],
+  indexes: readonly MxfIndexTableSegment[]
+): MxfPacket[] {
+  const tracksByNumber = new Map(tracks.map((track) => [track.number, track]));
+  const elementsPerTrack = new Map<number, number>();
+  for (const element of essence) {
+    elementsPerTrack.set(element.trackNumber, (elementsPerTrack.get(element.trackNumber) ?? 0) + 1);
+  }
+  const counters = new Map<number, number>();
+  return essence.flatMap((element): MxfPacket[] => {
+    const track = tracksByNumber.get(element.trackNumber);
+    if (!track) {
+      return [];
+    }
+    const duration = track.editRate.denominator / track.editRate.numerator;
+    const indexSegment = indexes.find((segment) => segment.bodySid === element.bodySid);
+    const editUnitByteCount = indexSegment?.editUnitByteCount ?? 0;
+    const slices = essenceSlices(
+      element.klv.valueLength,
+      elementsPerTrack.get(element.trackNumber) ?? 1,
+      indexSegment
+    );
+    const packets: MxfPacket[] = [];
+    for (const slice of slices) {
+      const index = counters.get(track.number) ?? 0;
+      counters.set(track.number, index + 1);
+      const indexEntry = indexSegment?.entries[index - indexSegment.indexStartPosition];
+      packets.push({
+        track,
+        index,
+        timestamp: (index + track.origin) * duration,
+        duration,
+        timestampUs: Math.round((index + track.origin) * duration * 1_000_000),
+        durationUs: Math.round(duration * 1_000_000),
+        keyframe: indexEntry ? (indexEntry.flags & 0x80) !== 0 : null,
+        byteOffset: element.klv.valueOffset + slice.offset,
+        byteLength: slice.length,
+        essence: element
+      });
+    }
+    return packets;
+  });
+}
+
+function essenceSlices(
+  valueLength: number,
+  elementCount: number,
+  indexSegment: MxfIndexTableSegment | undefined
+): Array<{ offset: number; length: number }> {
+  const editUnitByteCount = indexSegment?.editUnitByteCount ?? 0;
+  if (editUnitByteCount > 0 && valueLength >= editUnitByteCount * 2) {
+    const units = Math.min(
+      Math.floor(valueLength / editUnitByteCount),
+      indexSegment?.indexDuration || Number.MAX_SAFE_INTEGER
+    );
+    return Array.from({ length: units }, (_, index) => ({
+      offset: index * editUnitByteCount,
+      length: editUnitByteCount
+    }));
+  }
+
+  const entries = indexSegment?.entries ?? [];
+  if (elementCount === 1 && entries.length > 1) {
+    const firstOffset = entries[0].streamOffset;
+    const offsets = entries.map((entry) => entry.streamOffset - firstOffset);
+    if (
+      offsets[0] === 0 &&
+      offsets.every((offset, index) => offset >= 0 && offset < valueLength && (index === 0 || offset > offsets[index - 1]))
+    ) {
+      return offsets.map((offset, index) => ({
+        offset,
+        length: (offsets[index + 1] ?? valueLength) - offset
+      }));
+    }
+  }
+
+  return [{ offset: 0, length: valueLength }];
+}
+
+function parseIndexTable(set: MxfMetadataSet): MxfIndexTableSegment {
+  const entries: MxfIndexEntry[] = [];
+  const entryArray = item(set.items, 0x3f0a);
+  if (entryArray && entryArray.length >= 8) {
+    const count = readU32BE(entryArray, 0);
+    const itemLength = readU32BE(entryArray, 4);
+    if (itemLength >= 11 && 8 + count * itemLength <= entryArray.length) {
+      for (let index = 0; index < count; index += 1) {
+        const offset = 8 + index * itemLength;
+        entries.push({
+          temporalOffset: signedByte(entryArray[offset]),
+          keyFrameOffset: signedByte(entryArray[offset + 1]),
+          flags: entryArray[offset + 2],
+          streamOffset: safeNumber(readU64BE(entryArray, offset + 3))
+        });
+      }
+    }
+  }
+  return {
+    offset: set.offset,
+    indexEditRate: itemRational(set, 0x3f0b),
+    indexStartPosition: itemI64(set, 0x3f0c) ?? 0,
+    indexDuration: itemI64(set, 0x3f0d) ?? 0,
+    editUnitByteCount: itemU32(set, 0x3f05) ?? 0,
+    indexSid: itemU32(set, 0x3f06) ?? 0,
+    bodySid: itemU32(set, 0x3f07) ?? 0,
+    entries
+  };
+}
+
+async function parseRandomIndex(source: MxfSource, klv: MxfKlvPacket): Promise<MxfRandomIndexEntry[]> {
+  const bytes = await readMetadataValue(source, klv);
+  const entries: MxfRandomIndexEntry[] = [];
+  for (let offset = 0; offset + 12 <= bytes.length - 4; offset += 12) {
+    entries.push({
+      bodySid: readU32BE(bytes, offset),
+      byteOffset: safeNumber(readU64BE(bytes, offset + 4))
+    });
+  }
+  return entries;
+}
+
+async function readMetadataValue(source: MxfSource, klv: MxfKlvPacket): Promise<Uint8Array> {
+  if (klv.valueLength > MAX_METADATA_VALUE_BYTES) {
+    throw new Error(`MXF metadata KLV at ${klv.offset} exceeds ${MAX_METADATA_VALUE_BYTES} bytes.`);
+  }
+  return source.read(klv.valueOffset, klv.valueLength);
+}
+
+function item(items: readonly MxfLocalSetItem[], localTag: number): Uint8Array | null {
+  return items.find((candidate) => candidate.localTag === localTag)?.value ?? null;
+}
+
+function itemU32(set: MxfMetadataSet, localTag: number): number | null {
+  const value = item(set.items, localTag);
+  return value && value.length >= 4 ? readU32BE(value, 0) : null;
+}
+
+function itemI64(set: MxfMetadataSet, localTag: number): number | null {
+  const value = item(set.items, localTag);
+  return value && value.length >= 8 ? readI64BE(value, 0) : null;
+}
+
+function itemRational(set: MxfMetadataSet, localTag: number): MxfRational | null {
+  const value = item(set.items, localTag);
+  if (!value || value.length < 8) {
+    return null;
+  }
+  const numerator = readU32BE(value, 0);
+  const denominator = readU32BE(value, 4);
+  return numerator > 0 && denominator > 0 ? { numerator, denominator } : null;
+}
+
+function itemHex(set: MxfMetadataSet, localTag: number): string | null {
+  const value = item(set.items, localTag);
+  return value ? hex(value) : null;
+}
+
+function itemString(set: MxfMetadataSet, localTag: number): string | null {
+  const value = item(set.items, localTag);
+  return value ? utf16Be(value) : null;
+}
+
+function partitionKind(value: number): MxfPartitionKind {
+  return value === 2 ? "header" : value === 3 ? "body" : value === 4 ? "footer" : "unknown";
+}
+
+function kindForEssence(element: MxfEssenceElement | undefined): MxfTrackKind {
+  if (!element) {
+    return "unknown";
+  }
+  switch (element.itemType) {
+    case 0x14:
+      return "system";
+    case 0x15:
+      return "video";
+    case 0x16:
+      return "audio";
+    case 0x17:
+      return "data";
+    default:
+      return "unknown";
+  }
+}
+
+function isEssenceKey(key: string): boolean {
+  return key.startsWith(GENERIC_ESSENCE_PREFIX) || key.startsWith(AVID_ESSENCE_PREFIX) || key.startsWith(CANOPUS_ESSENCE_PREFIX);
+}
+
+function isPartitionKey(klv: MxfKlvPacket): boolean {
+  return klv.keyHex.startsWith(PARTITION_PREFIX) && klv.key[13] >= 2 && klv.key[13] <= 4;
+}
+
+function matchesPrefix(bytes: Uint8Array, offset: number, prefix: readonly number[]): boolean {
+  return offset + prefix.length <= bytes.length && prefix.every((value, index) => bytes[offset + index] === value);
+}
+
+function groupBy<T, K>(values: readonly T[], keyFor: (value: T) => K): Map<K, T[]> {
+  const result = new Map<K, T[]>();
+  for (const value of values) {
+    const key = keyFor(value);
+    const group = result.get(key);
+    if (group) {
+      group.push(value);
+    } else {
+      result.set(key, [value]);
+    }
+  }
+  return result;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException("MXF demux was aborted.", "AbortError");
+  }
+}

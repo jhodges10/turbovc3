@@ -1,0 +1,38 @@
+{
+  "name": "dnx-codecs",
+  "version": "0.1.0",
+  "description": "DNxHD/DNxHR decoding and MXF demuxing for browsers",
+  "type": "module",
+  "main": "./dist/dnx-codecs.js",
+  "module": "./dist/dnx-codecs.js",
+  "types": "./dist/dnx-codecs.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/dnx-codecs.d.ts",
+      "import": "./dist/dnx-codecs.js"
+    },
+    "./mxf": {
+      "types": "./dist/mxf/index.d.ts",
+      "import": "./dist/mxf/index.js"
+    }
+  },
+  "files": ["README.md", "LICENSE", "dist"],
+  "license": "MPL-2.0",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "build:wasm-kernel": "bash scripts/build-dnx-wasm.sh",
+    "build:zig-wasm": "bash scripts/build-dnx-zig-wasm.sh",
+    "build:wasm": "npm run build:wasm-kernel && npm run build:zig-wasm",
+    "fixtures:generate": "node tests/dnx-oracle-test.mjs --generate --allow-missing",
+    "test": "node tests/dnx-pixel-conversion-test.mjs && node tests/dnx-webgpu-renderer-test.mjs && node tests/dnx-decoder-contract-test.mjs && node tests/mxf-demuxer-test.mjs && node tests/dnx-oracle-test.mjs --allow-missing"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": { "mediabunny": "1.50.8" },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}

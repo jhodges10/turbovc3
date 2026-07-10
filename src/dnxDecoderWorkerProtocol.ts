@@ -1,0 +1,53 @@
+import type { DnxFourCc, DnxFrameHeader } from "./dnxFrame";
+import type { DnxPixelFormat } from "./dnxDecoder";
+import type { DnxFrameLayout } from "./dnxReconstruction";
+
+export interface DnxPacketWorkerInitRequest {
+  type: "init";
+  dnxFourCc: DnxFourCc;
+  allowedOutputFormats: readonly DnxPixelFormat[];
+}
+
+export interface DnxPacketWorkerDecodeRequest {
+  type: "decode";
+  requestId: number;
+  packet: ArrayBuffer;
+}
+
+export interface DnxPacketWorkerCloseRequest {
+  type: "close";
+}
+
+export type DnxPacketWorkerRequest =
+  | DnxPacketWorkerInitRequest
+  | DnxPacketWorkerDecodeRequest
+  | DnxPacketWorkerCloseRequest;
+
+export interface DnxWorkerFrameContents {
+  codedWidth: number;
+  codedHeight: number;
+  visibleWidth: number;
+  visibleHeight: number;
+  pixelFormat: DnxPixelFormat;
+  originalPixelFormat: DnxPixelFormat;
+  colorSpace: DnxFrameHeader["colorSpace"];
+  header: DnxFrameHeader;
+  layout: DnxFrameLayout;
+}
+
+export type DnxPacketWorkerResponse =
+  | {
+      type: "ready";
+      mode: string;
+    }
+  | {
+      type: "decoded";
+      requestId: number;
+      mode: string;
+      frame: DnxWorkerFrameContents;
+    }
+  | {
+      type: "error";
+      requestId?: number;
+      message: string;
+    };
