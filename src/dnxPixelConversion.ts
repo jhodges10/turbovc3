@@ -1,6 +1,6 @@
 import type { DecodePlane } from "./core/codec.js";
-import type { DnxPixelFormat } from "./dnxDecoder";
-import type { DnxFrameLayout } from "./dnxReconstruction";
+import type { DnxPixelFormat } from "./dnxDecoder.js";
+import type { DnxFrameLayout } from "./dnxReconstruction.js";
 
 export type DnxConvertiblePixelFormat =
   | "yuv420p8"

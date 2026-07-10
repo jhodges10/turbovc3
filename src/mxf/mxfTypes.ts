@@ -1,4 +1,4 @@
-import type { MxfSource } from "./mxfSource";
+import type { MxfSource } from "./mxfSource.js";
 
 export interface MxfRational {
   numerator: number;

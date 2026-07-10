@@ -1,12 +1,12 @@
-import { DnxBitReader } from "./dnxBitReader";
-import type { DnxFrameHeader } from "./dnxFrame";
-import { DnxTypescriptIdctKernel, type DnxIdctKernel } from "./dnxIdctKernel";
-import type { DnxRowDecoder, DnxRowTableSet } from "./dnxZigRowDecoder";
+import { DnxBitReader } from "./dnxBitReader.js";
+import type { DnxFrameHeader } from "./dnxFrame.js";
+import { DnxTypescriptIdctKernel, type DnxIdctKernel } from "./dnxIdctKernel.js";
+import type { DnxRowDecoder, DnxRowTableSet } from "./dnxZigRowDecoder.js";
 import {
   createDnxFrameLayout,
   parseDnxRowSpans,
   type DnxFrameLayout
-} from "./dnxReconstruction";
+} from "./dnxReconstruction.js";
 import {
   DNXHD_1235_AC_BITS_COMPLETE,
   DNXHD_1235_AC_CODES,
@@ -44,7 +44,7 @@ import {
   DNXHD_1251_AC_INFO,
   DNXHD_1251_CHROMA_WEIGHT,
   DNXHD_1251_LUMA_WEIGHT
-} from "./dnxTables";
+} from "./dnxTables.js";
 
 export interface DnxScalarDecodeResult {
   layout: DnxFrameLayout;

@@ -14,13 +14,13 @@ import {
   type EncodedPacket,
   type VideoCodec
 } from "mediabunny";
-import { Decoder, Frame, type FilledFrame } from "./dnxDecoder";
+import { Decoder, Frame, type FilledFrame } from "./dnxDecoder.js";
 import {
   DNX_SAMPLE_ENTRIES,
   parseDnxFrameHeader,
   type DnxFourCc,
   type DnxFrameHeader
-} from "./dnxFrame";
+} from "./dnxFrame.js";
 
 export interface DnxPacketSummary {
   data: Uint8Array;

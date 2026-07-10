@@ -1,4 +1,4 @@
-import type { DnxFrameHeader } from "./dnxFrame";
+import type { DnxFrameHeader } from "./dnxFrame.js";
 
 export type DnxSharedRowWorkerRequest =
   | { type: "init" }

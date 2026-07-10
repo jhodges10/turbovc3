@@ -1,5 +1,5 @@
-import { hex, readI64BE, readU16BE, readU32BE, readU64BE, safeNumber, signedByte, utf16Be } from "./mxfBinary";
-import { toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource";
+import { hex, readI64BE, readU16BE, readU32BE, readU64BE, safeNumber, signedByte, utf16Be } from "./mxfBinary.js";
+import { toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource.js";
 import type {
   MxfDemuxResult,
   MxfDescriptor,
@@ -16,7 +16,7 @@ import type {
   MxfRational,
   MxfTrack,
   MxfTrackKind
-} from "./mxfTypes";
+} from "./mxfTypes.js";
 
 const KLV_PREFIX = [0x06, 0x0e, 0x2b, 0x34] as const;
 const PARTITION_PREFIX = "060e2b34020501010d01020101";

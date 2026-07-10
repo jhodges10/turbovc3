@@ -1,9 +1,9 @@
-import type { DecodeOptions, FilledFrame, Frame, DecoderOptions } from "./dnxDecoder";
+import type { DecodeOptions, FilledFrame, Frame, DecoderOptions } from "./dnxDecoder.js";
 import type {
   DnxPacketWorkerRequest,
   DnxPacketWorkerResponse,
   DnxWorkerFrameContents
-} from "./dnxDecoderWorkerProtocol";
+} from "./dnxDecoderWorkerProtocol.js";
 
 interface WorkerSlot {
   worker: Worker;

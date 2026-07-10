@@ -1,5 +1,5 @@
 import { MxfDemuxer, type MxfTrack } from "./mxf/index.js";
-import { parseDnxFrameHeader, type DnxFramePacket } from "./dnxFrame";
+import { parseDnxFrameHeader, type DnxFramePacket } from "./dnxFrame.js";
 
 export interface DnxMxfEditRate {
   numerator: number;

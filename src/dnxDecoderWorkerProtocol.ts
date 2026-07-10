@@ -1,6 +1,6 @@
-import type { DnxFourCc, DnxFrameHeader } from "./dnxFrame";
-import type { DnxPixelFormat } from "./dnxDecoder";
-import type { DnxFrameLayout } from "./dnxReconstruction";
+import type { DnxFourCc, DnxFrameHeader } from "./dnxFrame.js";
+import type { DnxPixelFormat } from "./dnxDecoder.js";
+import type { DnxFrameLayout } from "./dnxReconstruction.js";
 
 export interface DnxPacketWorkerInitRequest {
   type: "init";

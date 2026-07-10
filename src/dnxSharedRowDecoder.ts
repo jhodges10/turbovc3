@@ -1,14 +1,14 @@
-import type { DnxFrameHeader } from "./dnxFrame";
+import type { DnxFrameHeader } from "./dnxFrame.js";
 import {
   createDnxFrameLayout,
   dnxFrameByteLength,
   parseDnxRowSpans,
   type DnxFrameLayout
-} from "./dnxReconstruction";
+} from "./dnxReconstruction.js";
 import type {
   DnxSharedRowWorkerRequest,
   DnxSharedRowWorkerResponse
-} from "./dnxSharedRowWorkerProtocol";
+} from "./dnxSharedRowWorkerProtocol.js";
 
 interface WorkerSlot {
   worker: Worker;

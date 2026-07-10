@@ -11,9 +11,9 @@ import {
   type DecodeSession,
   type DecodeSessionOptions
 } from "./core/index.js";
-import { Decoder, Frame } from "./dnxDecoder";
-import { inspectDnxContainer, type DnxPacketSummary } from "./dnxMediabunny";
-import { demuxDnxMxf, isMxfFile, type DnxMxfEditRate } from "./dnxMxf";
+import { Decoder, Frame } from "./dnxDecoder.js";
+import { inspectDnxContainer, type DnxPacketSummary } from "./dnxMediabunny.js";
+import { demuxDnxMxf, isMxfFile, type DnxMxfEditRate } from "./dnxMxf.js";
 import {
   DNX_SAMPLE_ENTRIES,
   findDnxFramePackets,
@@ -21,7 +21,7 @@ import {
   dnxColorSpaceForHeader,
   parseDnxFrameHeader,
   summarizeDnxFrameHeader
-} from "./dnxFrame";
+} from "./dnxFrame.js";
 
 const DNX_EXTENSIONS = [".mov", ".mxf", ".dnxhd", ".dnxhr"] as const;
 const ISO_BMFF_ATOMS = ["ftyp", "moov", "mdat"] as const;

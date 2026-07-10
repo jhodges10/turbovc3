@@ -1,6 +1,6 @@
 import type { DecodePlane } from "./core/codec.js";
-import { DnxBitReader } from "./dnxBitReader";
-import type { DnxFrameHeader } from "./dnxFrame";
+import { DnxBitReader } from "./dnxBitReader.js";
+import type { DnxFrameHeader } from "./dnxFrame.js";
 
 export interface DnxRowSpan {
   row: number;

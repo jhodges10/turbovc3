@@ -4,18 +4,18 @@ import {
   parseDnxFrameHeader,
   type DnxFourCc,
   type DnxFrameHeader
-} from "./dnxFrame";
+} from "./dnxFrame.js";
 import {
   analyzeDnxPixelReconstruction,
   type DnxFrameLayout,
   type DnxReconstructionState
-} from "./dnxReconstruction";
-import { createDnxIdctKernel, type DnxIdctKernel, type DnxIdctMode } from "./dnxIdctKernel";
-import { decodeDnxScalarFrame } from "./dnxScalarDecoder";
-import { convertDnxFrameLayout, selectDnxOutputFormat } from "./dnxPixelConversion";
-import { DnxSharedRowDecoder } from "./dnxSharedRowDecoder";
-import { createDnxZigRowDecoder, type DnxRowDecoder } from "./dnxZigRowDecoder";
-import { DnxDecoderWorkerPool } from "./dnxDecoderWorkerPool";
+} from "./dnxReconstruction.js";
+import { createDnxIdctKernel, type DnxIdctKernel, type DnxIdctMode } from "./dnxIdctKernel.js";
+import { decodeDnxScalarFrame } from "./dnxScalarDecoder.js";
+import { convertDnxFrameLayout, selectDnxOutputFormat } from "./dnxPixelConversion.js";
+import { DnxSharedRowDecoder } from "./dnxSharedRowDecoder.js";
+import { createDnxZigRowDecoder, type DnxRowDecoder } from "./dnxZigRowDecoder.js";
+import { DnxDecoderWorkerPool } from "./dnxDecoderWorkerPool.js";
 
 export type DnxPixelFormat = Extract<
   DecodePixelFormat,

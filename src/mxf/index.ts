@@ -1,3 +1,3 @@
-export * from "./mxfDemuxer";
-export * from "./mxfSource";
-export type * from "./mxfTypes";
+export * from "./mxfDemuxer.js";
+export * from "./mxfSource.js";
+export type * from "./mxfTypes.js";

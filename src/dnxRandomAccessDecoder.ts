@@ -5,14 +5,14 @@ import {
   DnxInvalidDataError,
   Frame,
   type DnxPixelFormat
-} from "./dnxDecoder";
+} from "./dnxDecoder.js";
 import {
   dnxColorSpaceForHeader,
   findDnxFramePackets,
   type DnxFourCc,
   type DnxFramePacket
-} from "./dnxFrame";
-import { demuxDnxMxf, isMxfFile, type DnxMxfEditRate } from "./dnxMxf";
+} from "./dnxFrame.js";
+import { demuxDnxMxf, isMxfFile, type DnxMxfEditRate } from "./dnxMxf.js";
 
 export interface DnxRandomAccessDecoderOptions {
   concurrency?: number;
