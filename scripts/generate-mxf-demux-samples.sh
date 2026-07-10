@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source_file="${1:-$repo_root/samples/wip_gallery_page.mov}"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source_file="${1:-$repo_root/samples/source.mov}"
 ffmpeg_bin="${FFMPEG:-ffmpeg}"
 output_dir="$repo_root/samples"
 

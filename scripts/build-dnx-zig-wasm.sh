@@ -2,9 +2,9 @@
 # Build the complete DNx macroblock-row decoder as standalone Zig/WASM.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SRC="$ROOT/src/src/native_row_decoder.zig"
-OUT_DIR="$ROOT/src/wasm/generated"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SRC="$ROOT/src/native/dnx_row_decoder.zig"
+OUT_DIR="$ROOT/wasm/generated"
 EXPECTED_ZIG_VERSION="0.15.2"
 
 if [[ -n "${ZIG:-}" ]]; then

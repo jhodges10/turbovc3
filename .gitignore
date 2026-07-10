@@ -1,8 +1,9 @@
 node_modules/
 dist/
+src/native/build/
 .vite/
 .DS_Store
-src/wasm/generated/
+wasm/generated/
 samples/**/*
 !samples/**/.gitkeep
 *.wasm.map

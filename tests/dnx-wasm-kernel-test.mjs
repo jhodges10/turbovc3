@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const buildScript = path.join(repoRoot, "scripts/build-dnx-wasm.sh");
-const wasmPath = path.join(repoRoot, "src/wasm/generated/dnx_idct_kernel.wasm");
+const wasmPath = path.join(repoRoot, "wasm/generated/dnx_idct_kernel.wasm");
 
 const IDCT_BASIS = Array.from({ length: 8 }, (_, x) =>
   Array.from({ length: 8 }, (_, u) => (u === 0 ? Math.SQRT1_2 : 1) * Math.cos(((2 * x + 1) * u * Math.PI) / 16))

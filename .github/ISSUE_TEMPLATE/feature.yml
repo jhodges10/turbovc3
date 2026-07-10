@@ -1,0 +1,28 @@
+name: Feature request
+description: Propose a focused codec, container, browser, or developer-experience improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What concrete use case is blocked or unnecessarily difficult?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the API or observable behavior, not only an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Codec or container details
+      description: Include relevant profile, CID, container, dimensions, bit depth, or browser constraints.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible decoding, demuxing, rendering, or packaging problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach confidential media. Use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.1.0 or commit SHA"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser/runtime, operating system, bundler, Mediabunny version, and cross-origin-isolation state.
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Media characteristics
+      description: Container, sample entry, DNx profile/CID, dimensions, bit depth, chroma format, and generation command.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include code, steps, and a synthetic fixture-generation command when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or diagnostics
+      render: shell

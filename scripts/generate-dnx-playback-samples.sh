@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE="${1:-samples/prores/turbores-sample.mov}"
-OUTPUT_DIR="${2:-samples}"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE="${1:-$ROOT/samples/source.mov}"
+OUTPUT_DIR="${2:-$ROOT/samples}"
 FRAMES="${3:-30}"
 FFMPEG="${FFMPEG:-ffmpeg}"
 

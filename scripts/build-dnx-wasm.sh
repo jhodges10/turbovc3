@@ -2,10 +2,10 @@
 # Build experimental DNx standalone WASM kernels.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NATIVE_ROOT="$ROOT/src/native"
-SRC="$NATIVE_ROOT/src/dnx_idct_kernel.c"
-OUT_DIR="$ROOT/src/wasm/generated"
+SRC="$NATIVE_ROOT/dnx_idct_kernel.c"
+OUT_DIR="$ROOT/wasm/generated"
 
 mkdir -p "$OUT_DIR" "$NATIVE_ROOT/build"
 

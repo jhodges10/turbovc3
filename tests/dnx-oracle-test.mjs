@@ -5,18 +5,18 @@ import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { gunzipSync } from "node:zlib";
 import { build } from "esbuild";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = parseArgs(process.argv.slice(2));
 const fixtureDir = path.resolve(repoRoot, args.fixtureDir ?? "samples");
-const wasmKernelPath = path.join(repoRoot, "src/wasm/generated/dnx_idct_kernel.wasm");
-const zigDecoderPath = path.join(repoRoot, "src/wasm/generated/dnx_row_decoder.wasm");
+const wasmKernelPath = path.join(repoRoot, "wasm/generated/dnx_idct_kernel.wasm");
+const zigDecoderPath = path.join(repoRoot, "wasm/generated/dnx_row_decoder.wasm");
 const frames = Number(args.frames ?? 3);
 const ffmpeg = args.ffmpeg ?? process.env.FFMPEG ?? findExecutable("ffmpeg") ?? "/opt/homebrew/bin/ffmpeg";
 const source = args.source ?? process.env.DNX_SOURCE ?? firstExisting([
-  path.join(repoRoot, "samples/prores/turbores-sample.mov"),
-  "/Users/jeff/Library/CloudStorage/Dropbox/what_are_we_doing_to_fix_it.mp4"
+  path.join(repoRoot, "samples/source.mov")
 ]);
 
 const supportedFixtures = [
@@ -119,7 +119,7 @@ const supportedFixtures = [
   },
   {
     name: "dnxhr-444-1080p30-10bit-cid1270",
-    output: path.join(fixtureDir, "oracle_dnxhr_444_1080p30_10bit_reject.mov"),
+    output: path.join(fixtureDir, "oracle_dnxhr_444_1080p30_10bit.mov"),
     vf: "fps=30,scale=1920:1080,format=yuv444p10le",
     profile: "dnxhr_444",
     oraclePixelFormat: "yuv444p10le",
@@ -218,41 +218,44 @@ async function main() {
     if (!args.allowMissing) {
       throw new Error(`${message}. Run npm run fixtures:generate -- --source <media>.`);
     }
-    console.log(`${message}; oracle decode comparisons skipped.`);
-  } else {
-    assertExecutable(ffmpeg);
-    for (const fixture of presentSupported) {
-      await runOracleComparison(decoder, fixture);
-      if (path.extname(fixture.output).toLowerCase() === ".mov") {
-        await assertCodecSessionDecodesAllFrames(decoder, fixture);
-      }
-    }
+    console.log(`${message}; running comparisons for the fixtures that are present.`);
+  }
 
-    for (const extensionCase of [
-      { name: "dnxhr-lb-1080p30-8bit-cid1274", fourCc: "AVdh", format: "I422" },
-      { name: "dnxhr-hqx-1080p30-10bit-cid1271", fourCc: "AVdh", format: "I422P10" },
-      { name: "dnxhr-444-1080p30-10bit-cid1270", fourCc: "AVdh", format: "I444P10" },
-      { name: "dnxhr-hqx-1080p-12bit-cid1271-fate", fourCc: "AVdh", format: "I422P12" }
-    ]) {
-      const extensionFixture = presentSupported.find((fixture) => fixture.name === extensionCase.name);
-      if (extensionFixture) {
-        await assertMediabunnyExtensionDecodes(
-          decoder,
-          extensionFixture,
-          extensionCase.fourCc,
-          extensionCase.format
-        );
-      }
-    }
+  if (args.requireNative && (!existsSync(wasmKernelPath) || !existsSync(zigDecoderPath))) {
+    throw new Error("Native oracle checks require both generated WASM binaries. Run npm run build:wasm first.");
+  }
 
-    const localAvdnPath = path.join(fixtureDir, "local_probe_dnxhd_720p_8bit.mov");
-    if (existsSync(localAvdnPath)) {
-      await assertMediabunnyExtensionDecodes(decoder, {
-        name: "dnxhd-720p30-8bit-mediabunny-extension",
-        output: localAvdnPath,
-        expected: { width: 1280, height: 720 }
-      }, "AVdn", "I422");
+  for (const fixture of presentSupported) {
+    await runOracleComparison(decoder, fixture);
+    if (path.extname(fixture.output).toLowerCase() === ".mov") {
+      await assertCodecSessionDecodesAllFrames(decoder, fixture);
     }
+  }
+
+  for (const extensionCase of [
+    { name: "dnxhr-lb-1080p30-8bit-cid1274", fourCc: "AVdh", format: "I422" },
+    { name: "dnxhr-hqx-1080p30-10bit-cid1271", fourCc: "AVdh", format: "I422P10" },
+    { name: "dnxhr-444-1080p30-10bit-cid1270", fourCc: "AVdh", format: "I444P10" },
+    { name: "dnxhr-hqx-1080p-12bit-cid1271-fate", fourCc: "AVdh", format: "I422P12" }
+  ]) {
+    const extensionFixture = presentSupported.find((fixture) => fixture.name === extensionCase.name);
+    if (extensionFixture) {
+      await assertMediabunnyExtensionDecodes(
+        decoder,
+        extensionFixture,
+        extensionCase.fourCc,
+        extensionCase.format
+      );
+    }
+  }
+
+  const localAvdnPath = path.join(fixtureDir, "local_probe_dnxhd_720p_8bit.mov");
+  if (existsSync(localAvdnPath)) {
+    await assertMediabunnyExtensionDecodes(decoder, {
+      name: "dnxhd-720p30-8bit-mediabunny-extension",
+      output: localAvdnPath,
+      expected: { width: 1280, height: 720 }
+    }, "AVdn", "I422");
   }
 
   const presentUnsupported = unsupportedFixtures.filter((fixture) => existsSync(fixture.output));
@@ -339,24 +342,36 @@ function generateFixture(fixture) {
 async function runOracleComparison(decoder, fixture) {
   const tmp = await mkdtemp(path.join(tmpdir(), "dnx-oracle-"));
   try {
-    const rawPath = path.join(tmp, `${fixture.name}.yuv`);
-    const ffmpegResult = spawnSync(ffmpeg, [
-      "-v", "error",
-      "-y",
-      "-i", fixture.output,
-      "-frames:v", "1",
-      "-f", "rawvideo",
-      "-pix_fmt", fixture.oraclePixelFormat ?? "yuv422p",
-      rawPath
-    ], { cwd: repoRoot, stdio: "inherit" });
-    if (ffmpegResult.status !== 0) {
-      throw new Error(`FFmpeg oracle decode failed for ${fixture.name}.`);
+    const goldenPath = fixture.output.replace(/\.[^.]+$/, ".yuv.gz");
+    let oracleBytes;
+    if (existsSync(goldenPath)) {
+      oracleBytes = new Uint8Array(gunzipSync(await readFile(goldenPath)));
+    } else {
+      assertExecutable(ffmpeg);
+      const rawPath = path.join(tmp, `${fixture.name}.yuv`);
+      const ffmpegResult = spawnSync(ffmpeg, [
+        "-v", "error",
+        "-y",
+        "-i", fixture.output,
+        "-frames:v", "1",
+        "-f", "rawvideo",
+        "-pix_fmt", fixture.oraclePixelFormat ?? "yuv422p",
+        rawPath
+      ], { cwd: repoRoot, stdio: "inherit" });
+      if (ffmpegResult.status !== 0) {
+        throw new Error(`FFmpeg oracle decode failed for ${fixture.name}.`);
+      }
+      oracleBytes = new Uint8Array(await readFile(rawPath));
     }
 
-    const oracleBytes = new Uint8Array(await readFile(rawPath));
     const decoded = await decoder.decodeFirstVisibleFrame(fixture.output);
-    const wasmDecoded = await decoder.decodeFirstVisibleFrameWasm(fixture.output, wasmKernelPath);
-    const zigDecoded = await decoder.decodeFirstVisibleFrameZig(fixture.output, zigDecoderPath);
+    const useNative = existsSync(wasmKernelPath) && existsSync(zigDecoderPath);
+    const wasmDecoded = useNative
+      ? await decoder.decodeFirstVisibleFrameWasm(fixture.output, wasmKernelPath)
+      : null;
+    const zigDecoded = useNative
+      ? await decoder.decodeFirstVisibleFrameZig(fixture.output, zigDecoderPath)
+      : null;
     assertEqual(decoded.header.cid, fixture.expected.cid, `${fixture.name} CID`);
     assertEqual(decoded.header.width, fixture.expected.width, `${fixture.name} width`);
     assertEqual(decoded.header.height, fixture.expected.height, `${fixture.name} height`);
@@ -367,21 +382,23 @@ async function runOracleComparison(decoder, fixture) {
     if (stats.maxAbsDiff > 1 || stats.countOver1 > 0) {
       throw new Error(`${fixture.name} exceeded oracle tolerance: ${JSON.stringify(stats)}`);
     }
-    const wasmStats = diffSamples(wasmDecoded.visibleBytes, oracleBytes, wasmDecoded.bytesPerSample);
-    if (wasmStats.maxAbsDiff > 1 || wasmStats.countOver1 > 0) {
-      throw new Error(`${fixture.name} WASM decode exceeded oracle tolerance: ${JSON.stringify(wasmStats)}`);
-    }
-    const backendParity = diffSamples(wasmDecoded.visibleBytes, decoded.visibleBytes, decoded.bytesPerSample);
-    if (backendParity.maxAbsDiff !== 0) {
-      throw new Error(`${fixture.name} WASM and TypeScript decode differ: ${JSON.stringify(backendParity)}`);
-    }
-    const zigStats = diffSamples(zigDecoded.visibleBytes, oracleBytes, zigDecoded.bytesPerSample);
-    if (zigStats.maxAbsDiff > 1 || zigStats.countOver1 > 0) {
-      throw new Error(`${fixture.name} Zig decode exceeded oracle tolerance: ${JSON.stringify(zigStats)}`);
-    }
-    const zigBackendParity = diffSamples(zigDecoded.visibleBytes, decoded.visibleBytes, decoded.bytesPerSample);
-    if (zigBackendParity.maxAbsDiff > 1 || zigBackendParity.countOver1 > 0) {
-      throw new Error(`${fixture.name} Zig and TypeScript decode differ: ${JSON.stringify(zigBackendParity)}`);
+    if (wasmDecoded && zigDecoded) {
+      const wasmStats = diffSamples(wasmDecoded.visibleBytes, oracleBytes, wasmDecoded.bytesPerSample);
+      if (wasmStats.maxAbsDiff > 1 || wasmStats.countOver1 > 0) {
+        throw new Error(`${fixture.name} WASM decode exceeded oracle tolerance: ${JSON.stringify(wasmStats)}`);
+      }
+      const backendParity = diffSamples(wasmDecoded.visibleBytes, decoded.visibleBytes, decoded.bytesPerSample);
+      if (backendParity.maxAbsDiff !== 0) {
+        throw new Error(`${fixture.name} WASM and TypeScript decode differ: ${JSON.stringify(backendParity)}`);
+      }
+      const zigStats = diffSamples(zigDecoded.visibleBytes, oracleBytes, zigDecoded.bytesPerSample);
+      if (zigStats.maxAbsDiff > 1 || zigStats.countOver1 > 0) {
+        throw new Error(`${fixture.name} Zig decode exceeded oracle tolerance: ${JSON.stringify(zigStats)}`);
+      }
+      const zigBackendParity = diffSamples(zigDecoded.visibleBytes, decoded.visibleBytes, decoded.bytesPerSample);
+      if (zigBackendParity.maxAbsDiff > 1 || zigBackendParity.countOver1 > 0) {
+        throw new Error(`${fixture.name} Zig and TypeScript decode differ: ${JSON.stringify(zigBackendParity)}`);
+      }
     }
 
     console.log(JSON.stringify({
@@ -391,10 +408,10 @@ async function runOracleComparison(decoder, fixture) {
       rowsDecoded: decoded.rowsDecoded,
       macroblocksDecoded: decoded.macroblocksDecoded,
       typescriptDecodeMs: decoded.elapsedMs,
-      wasmDecodeMs: wasmDecoded.elapsedMs,
-      zigDecodeMs: zigDecoded.elapsedMs,
-      idctMode: wasmDecoded.idctMode,
-      zigMode: zigDecoded.idctMode,
+      wasmDecodeMs: wasmDecoded?.elapsedMs ?? null,
+      zigDecodeMs: zigDecoded?.elapsedMs ?? null,
+      idctMode: wasmDecoded?.idctMode ?? "not-built",
+      zigMode: zigDecoded?.idctMode ?? "not-built",
       ...stats
     }, null, 2));
   } finally {
@@ -950,6 +967,9 @@ function parseArgs(argv) {
         break;
       case "--generate":
         parsed.generate = true;
+        break;
+      case "--require-native":
+        parsed.requireNative = true;
         break;
       case "--ffmpeg":
         parsed.ffmpeg = argv[++index];

@@ -52,7 +52,7 @@ export const dnxBuildTargets: readonly CodecBuildTarget[] = [
     name: "dnx-idct-wasm-kernel",
     runtime: "wasm",
     sourceRoot: "src/native",
-    outputRoot: "src/wasm/generated",
+    outputRoot: "wasm/generated",
     status: "experimental",
     notes: [
       "Retained as the scalar WASM IDCT fallback and parity oracle.",
@@ -63,7 +63,7 @@ export const dnxBuildTargets: readonly CodecBuildTarget[] = [
     name: "dnx-bitstream-wasm",
     runtime: "wasm",
     sourceRoot: "src/native",
-    outputRoot: "src/wasm/generated",
+    outputRoot: "wasm/generated",
     status: "experimental",
     notes: [
       "Zig/WASM decodes VLCs, inverse quantization, SIMD IDCT, and complete planar frames.",

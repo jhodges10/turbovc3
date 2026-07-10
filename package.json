@@ -1,7 +1,23 @@
 {
-  "name": "turbovc3",
+  "name": "@jhodges10/turbovc3",
   "version": "0.1.0",
   "description": "DNxHD/DNxHR decoding and MXF demuxing for browsers",
+  "keywords": [
+    "dnxhd",
+    "dnxhr",
+    "vc-3",
+    "video-codec",
+    "webassembly",
+    "webgpu",
+    "mxf",
+    "mediabunny"
+  ],
+  "homepage": "https://github.com/jhodges10/turbovc3#readme",
+  "bugs": "https://github.com/jhodges10/turbovc3/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhodges10/turbovc3.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -16,24 +32,35 @@
       "import": "./dist/mxf/index.js"
     }
   },
-  "files": ["README.md", "LICENSE", "dist"],
+  "files": ["README.md", "LICENSE", "dist", "wasm/generated/*.wasm"],
   "license": "MPL-2.0",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run build",
+    "prepack": "npm run build",
     "check": "tsc --noEmit -p tsconfig.json",
     "build:wasm-kernel": "bash scripts/build-dnx-wasm.sh",
     "build:zig-wasm": "bash scripts/build-dnx-zig-wasm.sh",
     "build:wasm": "npm run build:wasm-kernel && npm run build:zig-wasm",
     "fixtures:generate": "node tests/dnx-oracle-test.mjs --generate --allow-missing",
-    "test": "node tests/dnx-pixel-conversion-test.mjs && node tests/dnx-webgpu-renderer-test.mjs && node tests/dnx-decoder-contract-test.mjs && node tests/mxf-demuxer-test.mjs && node tests/dnx-oracle-test.mjs --allow-missing"
+    "fixtures:verify": "node tests/committed-fixtures-test.mjs",
+    "test": "npm run test:unit && npm run test:fixtures",
+    "test:unit": "node tests/dnx-pixel-conversion-test.mjs && node tests/dnx-webgpu-renderer-test.mjs && node tests/dnx-decoder-contract-test.mjs && node tests/mxf-demuxer-test.mjs",
+    "test:fixtures": "node tests/committed-fixtures-test.mjs",
+    "test:extended": "node tests/dnx-oracle-test.mjs --allow-missing",
+    "test:native": "node tests/dnx-wasm-kernel-test.mjs && node tests/committed-fixtures-test.mjs --require-native",
+    "test:package": "node tests/package-smoke-test.mjs"
   },
   "engines": { "node": ">=22" },
-  "dependencies": { "mediabunny": "1.50.8" },
+  "peerDependencies": { "mediabunny": "^1.50.8" },
   "devDependencies": {
     "@types/node": "^26.1.0",
     "esbuild": "^0.25.0",
+    "mediabunny": "1.50.8",
     "typescript": "^5.8.0"
   }
 }

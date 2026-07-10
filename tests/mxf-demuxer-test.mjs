@@ -32,6 +32,14 @@ await testFixture(module, "samples/mxf_demux_opatom_dnx.mxf", {
   frameRate: 30,
   operationalPattern: "060e2b34040101020d01020110030000"
 });
+await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf", 1);
+await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
+  width: 1280,
+  height: 720,
+  frameCount: 1,
+  frameRate: 30,
+  operationalPattern: "060e2b34040101020d01020110030000"
+});
 
 console.log("MXF demuxer contracts passed.");
 
@@ -94,7 +102,9 @@ async function testFixture(module, relativePath, expected) {
     const packets = demuxer.packetsForTrack(track);
     assert.equal(packets.length, expected.frameCount);
     assert.equal(packets[0].timestampUs, 0);
-    assert.equal(packets[1].timestampUs, Math.round(1_000_000 / expected.frameRate));
+    if (packets.length > 1) {
+      assert.equal(packets[1].timestampUs, Math.round(1_000_000 / expected.frameRate));
+    }
     assert.equal(packets.at(-1).index, expected.frameCount - 1);
     if (expected.frameSize) {
       assert.equal(packets[0].byteLength, expected.frameSize);
@@ -104,14 +114,16 @@ async function testFixture(module, relativePath, expected) {
     assert.equal(firstFrame.length, packets[0].byteLength);
     assert.deepEqual(Array.from(firstFrame.subarray(0, 2)), [0, 0]);
     assert.equal(firstFrame[4], 3);
-    assert.equal(bytesRead < info.size / 20, true, `Demux read ${bytesRead} of ${info.size} bytes`);
+    if (expected.frameCount > 1) {
+      assert.equal(bytesRead < info.size / 20, true, `Demux read ${bytesRead} of ${info.size} bytes`);
+    }
     console.log(`${relativePath}: ${packets.length} packets indexed after reading ${bytesRead} bytes`);
   } finally {
     await file.close();
   }
 }
 
-async function testAudioVideoFixture(module, relativePath) {
+async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 30) {
   const fixturePath = path.join(repoRoot, relativePath);
   if (!existsSync(fixturePath)) {
     console.log(`Skipping missing local fixture ${relativePath}.`);
@@ -123,15 +135,17 @@ async function testAudioVideoFixture(module, relativePath) {
   const audio = demuxer.tracks.find((track) => track.kind === "audio");
   assert.ok(video);
   assert.ok(audio);
-  assert.equal(video.packetCount, 30);
+  assert.equal(video.packetCount, expectedFrameCount);
   assert.equal(video.descriptor?.width, 1280);
   assert.equal(video.descriptor?.height, 720);
-  assert.equal(audio.packetCount, 30);
+  assert.equal(audio.packetCount, expectedFrameCount);
   assert.equal(audio.descriptor?.sampleRate?.numerator, 48000);
   assert.equal(audio.descriptor?.sampleRate?.denominator, 1);
   assert.equal(audio.descriptor?.channels, 2);
   assert.equal(audio.descriptor?.bitsPerSample, 16);
-  assert.equal(demuxer.packetsForTrack(audio)[1].timestampUs, 33333);
+  if (expectedFrameCount > 1) {
+    assert.equal(demuxer.packetsForTrack(audio)[1].timestampUs, 33333);
+  }
   console.log(`${relativePath}: video and audio tracks resolved`);
 }
 

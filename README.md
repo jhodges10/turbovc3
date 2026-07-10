@@ -1,13 +1,40 @@
 # turbovc3
 
-Browser DNxHD/DNxHR decoding with a Mediabunny-compatible extension entry point.
+[![CI](https://github.com/jhodges10/turbovc3/actions/workflows/ci.yml/badge.svg)](https://github.com/jhodges10/turbovc3/actions/workflows/ci.yml)
+[![MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
-## Mediabunny setup
+Experimental DNxHD/DNxHR (VC-3) decoding and MXF demuxing for modern browsers, with a
+[Mediabunny](https://mediabunny.dev/) extension entry point.
 
-The public setup matches `@mediabunny/prores`: register the decoder once before creating a decoding sink.
+> [!WARNING]
+> This is a `0.x` project. The supported codec scope is intentional, but the API and browser integration may change
+> before `1.0`. Validate it against your own media before using it in production.
+
+## Install from GitHub Packages
+
+GitHub Packages requires the `@jhodges10` scope to use its npm registry. Add this line to your user or project
+`.npmrc`:
+
+```ini
+@jhodges10:registry=https://npm.pkg.github.com
+```
+
+Authenticate with a GitHub personal access token that has `read:packages`, then install the package:
+
+```sh
+npm login --scope=@jhodges10 --auth-type=legacy --registry=https://npm.pkg.github.com
+npm install @jhodges10/turbovc3 mediabunny
+```
+
+The first package version will be published when its matching GitHub Release is published. npmjs publication is not
+configured yet.
+
+## Decode MOV/QuickTime through Mediabunny
+
+Register the extension once before creating a video sink:
 
 ```ts
-import { registerDnxDecoder } from "turbovc3";
+import { registerDnxDecoder } from "@jhodges10/turbovc3";
 import { BlobSource, Input, QuickTimeInputFormat, VideoSampleSink } from "mediabunny";
 
 registerDnxDecoder();
@@ -17,36 +44,101 @@ const input = new Input({
   source: new BlobSource(file)
 });
 const track = await input.getPrimaryVideoTrack();
-if (!track) {
-  throw new Error("No video track found.");
-}
+if (!track) throw new Error("No video track found.");
 
 const sink = new VideoSampleSink(track);
 const sample = await sink.getSample(0);
 ```
 
-`registerDnxDecoder()` is idempotent. It registers a Mediabunny `CustomVideoDecoder` for `AVdn` and `AVdh`, emits
-`I422`, `I422P10`, `I422P12`, `I444P10`, or `I444P12` `VideoSample` objects, and preserves packet timestamps,
-durations, display dimensions, and color metadata.
+`registerDnxDecoder()` is idempotent. It handles `AVdn` and `AVdh`, preserves timing, dimensions, and color metadata,
+and emits `I422`, `I422P10`, `I422P12`, `I444P10`, or `I444P12` samples.
 
-The lower-level `Decoder` can emit native 4:2:2 and 4:4:4 YUV/RGB at 8, 10, or 12 bits. It can also convert native
-4:2:2 to 4:2:0 or 4:4:4 and convert planar DNx RGB to 4:4:4 YUV when selected through `allowedOutputFormats`.
-`Frame.originalPixelFormat` describes the encoded layout while `Frame.pixelFormat` describes the returned planes.
+## Read MXF
 
-Mediabunny `1.50.8` does not yet classify DNx sample entries as a `VideoCodec`. Until it does, registration installs a
-guarded `InputVideoTrack` compatibility shim for codec recognition, decoder configuration, and intraframe packet
-semantics. Registration also suppresses only Mediabunny's expected `AVdn`/`AVdh` unsupported-codec console messages
-while continuing to emit its warning events and all unrelated warnings. These shims are skipped automatically when a
-future Mediabunny release includes `dnx` in `VIDEO_CODECS`.
+Mediabunny handles MOV/QuickTime demuxing. The separate MXF entry point handles OP1a and OPAtom track metadata,
+index tables, essence packets, and random packet reads:
 
-Current decode scope covers progressive DNxHD and DNxHR through 4096x2160 with 8/10/12-bit 4:2:2 and 10/12-bit
-4:4:4 YUV/RGB output. The strict oracle suite includes FFmpeg's official 12-bit CID 1271 FATE sample; a dedicated
-12-bit 4:4:4 source fixture is still needed for that exact profile combination.
-Cross-origin-isolated pages use a shared-memory row-worker backend. If that pool cannot initialize, its partial workers
-are terminated before decoder creation retries the packet-worker backend and then the synchronous backend; other
-environments start with those same fallbacks. Mediabunny handles MOV/QuickTime demuxing. `turbovc3/mxf` supplies standards-based OP1a
-and OPAtom track, descriptor, index-table, and essence packet extraction for MXF decode and random access.
+```ts
+import { MxfDemuxer } from "@jhodges10/turbovc3/mxf";
 
-`DnxAudioPlayback` is an optional container-level companion for MOV/QuickTime files with a decodable audio track. It
-uses Mediabunny's `AudioBufferSink`, schedules buffers through Web Audio, exposes an audio-backed media clock, and
-supports pause and sample-accurate seek without coupling audio decoding to the DNx video decoder.
+const demuxer = await MxfDemuxer.open(file);
+const videoTrack = demuxer.tracks.find((track) => track.kind === "video");
+if (!videoTrack) throw new Error("No MXF video track found.");
+
+const firstPacket = demuxer.packetsForTrack(videoTrack)[0];
+const encodedFrame = await demuxer.readPacket(firstPacket);
+```
+
+For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
+
+## Supported scope
+
+| Area | Current support |
+| --- | --- |
+| Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR) |
+| Frames | Progressive through 4096×2160 |
+| Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
+| Conversion | 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
+| MOV/QuickTime | Through Mediabunny |
+| MXF | OP1a and OPAtom DNx essence; PCM track metadata and packet extraction |
+| Deferred | Interlaced/MBAFF, alpha, and a dedicated 12-bit 4:4:4 fixture |
+
+CI performs real FFmpeg-oracle comparisons for DNxHD 8-bit, DNxHR HQX 10-bit, and DNxHR 444 10-bit, plus OP1a
+and OPAtom demuxing. The extended local suite covers additional profiles and the external FFmpeg 12-bit FATE sample.
+
+## Runtime backends
+
+Release packages include two WASM binaries. Decoder creation chooses the fastest available path and falls back safely:
+
+1. Cross-origin-isolated pages use shared-memory Zig/WASM row workers.
+2. Other worker-capable pages use a bounded packet-worker pool.
+3. Environments without usable workers use synchronous Zig/WASM and C/WASM IDCT.
+4. If release assets cannot load, decoding continues through the TypeScript implementation.
+
+Shared-memory decoding requires `Worker`, `SharedArrayBuffer`, and `crossOriginIsolated === true`, which normally means
+serving suitable COOP/COEP headers. The package does not require cross-origin isolation for ordinary decoding.
+
+Mediabunny `1.50.8` does not yet classify DNx as a native `VideoCodec`. Registration therefore installs a guarded
+compatibility shim that disables itself when a future Mediabunny release provides that support.
+
+## Public API
+
+The supported root surface contains:
+
+- `registerDnxDecoder()` and container inspection helpers
+- `Decoder`, `Frame`, their options, results, and typed decoder errors
+- DNx frame-header inspection helpers and types
+- `DnxAudioPlayback`, `DnxRandomAccessDecoder`, and `DnxWebGpuRenderer`
+- `demuxDnxMxf()`, `isMxfFile()`, and MXF adapter types
+
+Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
+The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
+
+## Develop
+
+Requirements for the ordinary workflow are Node.js 22+ and npm:
+
+```sh
+npm ci
+npm run check
+npm run build
+npm test
+npm run test:package
+```
+
+Native development additionally requires Zig `0.15.2` and Emscripten `6.0.2`:
+
+```sh
+npm run build:wasm
+npm run test:native
+REQUIRE_WASM_ASSETS=1 npm run test:package
+```
+
+FFmpeg 8.x is only required to regenerate committed fixtures or run the full local oracle corpus. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [research/README.md](research/README.md) for codec notes.
+
+## License and security
+
+turbovc3 is available under the [Mozilla Public License 2.0](LICENSE). Please report vulnerabilities through
+[GitHub private vulnerability reporting](https://github.com/jhodges10/turbovc3/security/advisories/new), not a public
+issue. See [SECURITY.md](SECURITY.md) for details.

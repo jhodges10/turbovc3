@@ -1,0 +1,64 @@
+{
+  "generator": "FFmpeg 8.x",
+  "script": "scripts/generate-ci-fixtures.sh",
+  "description": "One-frame synthetic test-pattern fixtures and compressed FFmpeg oracle output.",
+  "files": [
+    {
+      "path": "oracle_dnxhd_720p30_8bit_cid1251.mxf",
+      "sha256": "ed4a4d5e785257450d0bbfc48d5e614c4241409c4ba174e3b677365f5bc32b96",
+      "cid": 1251,
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuv422p8"
+    },
+    {
+      "path": "oracle_dnxhd_720p30_8bit_cid1251.yuv.gz",
+      "sha256": "c6155d817194985df45f97f9d87ed0d6b9262da924df5b49659c02bd51c1eee3"
+    },
+    {
+      "path": "oracle_dnxhr_hqx_1080p30_10bit_cid1271.mov",
+      "sha256": "4001d3a01e38e327ea63e3e0cf683f0c594c560b5563287d71108bf6b2b6fb38",
+      "cid": 1271,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv422p10"
+    },
+    {
+      "path": "oracle_dnxhr_hqx_1080p30_10bit_cid1271.yuv.gz",
+      "sha256": "898099e6f8fe7fb40186f86ec469b3ff770b92c273608f5e0b97ff377319ff53"
+    },
+    {
+      "path": "oracle_dnxhr_444_1080p30_10bit.mov",
+      "sha256": "dad7f63aeabdd5a075073f46766dfe0c323df28ca8be20d0d5a2d924b583c51a",
+      "cid": 1270,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv444p10"
+    },
+    {
+      "path": "oracle_dnxhr_444_1080p30_10bit.yuv.gz",
+      "sha256": "ce1aab469dc96c8d65b22d68cae9a0fe68d8bab7178aa8b1991c0ffedc5ff4fb"
+    },
+    {
+      "path": "dnxhr-lb-op1a-pcm.mxf",
+      "sha256": "73fb1a228da10e7136bb9dd13ad8f18b166cf0959c6120251bc7dc62c341d3b5",
+      "cid": 1274,
+      "width": 1280,
+      "height": 720,
+      "tracks": [
+        "video",
+        "audio"
+      ]
+    },
+    {
+      "path": "dnxhr-lb-opatom.mxf",
+      "sha256": "4d85d348f78d41b029e346e329f3d6161d842bda0ae72895eb5dc10548a779f6",
+      "cid": 1274,
+      "width": 1280,
+      "height": 720,
+      "tracks": [
+        "video"
+      ]
+    }
+  ]
+}
