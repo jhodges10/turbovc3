@@ -5,7 +5,7 @@ SOURCE="${1:-/Users/jeff/Library/CloudStorage/Dropbox/what_are_we_doing_to_fix_i
 OUTPUT_DIR="${2:-samples}"
 FRAMES="${3:-3}"
 
-npm run fixtures:generate --workspace turbov3 -- \
+npm run fixtures:generate --workspace turbovc3 -- \
   --source "${SOURCE}" \
   --fixture-dir "${OUTPUT_DIR}" \
   --frames "${FRAMES}"

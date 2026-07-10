@@ -1,15 +1,15 @@
 {
-  "name": "turbov3",
+  "name": "turbovc3",
   "version": "0.1.0",
   "description": "DNxHD/DNxHR decoding and MXF demuxing for browsers",
   "type": "module",
-  "main": "./dist/turbov3.js",
-  "module": "./dist/turbov3.js",
-  "types": "./dist/turbov3.d.ts",
+  "main": "./dist/turbovc3.js",
+  "module": "./dist/turbovc3.js",
+  "types": "./dist/turbovc3.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/turbov3.d.ts",
-      "import": "./dist/turbov3.js"
+      "types": "./dist/turbovc3.d.ts",
+      "import": "./dist/turbovc3.js"
     },
     "./mxf": {
       "types": "./dist/mxf/index.d.ts",
