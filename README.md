@@ -1,4 +1,4 @@
-# dnx-codecs
+# turbov3
 
 Browser DNxHD/DNxHR decoding with a Mediabunny-compatible extension entry point.
 
@@ -7,7 +7,7 @@ Browser DNxHD/DNxHR decoding with a Mediabunny-compatible extension entry point.
 The public setup matches `@mediabunny/prores`: register the decoder once before creating a decoding sink.
 
 ```ts
-import { registerDnxDecoder } from "dnx-codecs";
+import { registerDnxDecoder } from "turbov3";
 import { BlobSource, Input, QuickTimeInputFormat, VideoSampleSink } from "mediabunny";
 
 registerDnxDecoder();
@@ -44,7 +44,7 @@ Current decode scope covers progressive DNxHD and DNxHR through 4096x2160 with 8
 12-bit 4:4:4 source fixture is still needed for that exact profile combination.
 Cross-origin-isolated pages use a shared-memory row-worker backend. If that pool cannot initialize, its partial workers
 are terminated before decoder creation retries the packet-worker backend and then the synchronous backend; other
-environments start with those same fallbacks. Mediabunny handles MOV/QuickTime demuxing. `dnx-codecs/mxf` supplies standards-based OP1a
+environments start with those same fallbacks. Mediabunny handles MOV/QuickTime demuxing. `turbov3/mxf` supplies standards-based OP1a
 and OPAtom track, descriptor, index-table, and essence packet extraction for MXF decode and random access.
 
 `DnxAudioPlayback` is an optional container-level companion for MOV/QuickTime files with a decodable audio track. It

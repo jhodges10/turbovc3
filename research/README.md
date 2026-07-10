@@ -2,7 +2,7 @@
 
 ## v1 Scope
 
-- Containers: MOV/QuickTime via Mediabunny `1.50.8`; MXF OP1a/OPAtom via `dnx-codecs/mxf`.
+- Containers: MOV/QuickTime via Mediabunny `1.50.8`; MXF OP1a/OPAtom via `turbov3/mxf`.
 - Sample entries: `AVdn` for DNxHD and `AVdh` for DNxHR.
 - Frame scope: progressive frames through 4096x2160, 8/10/12-bit 4:2:2, and 10/12-bit 4:4:4 YUV/RGB.
 - Deferred: alpha, MBAFF/interlaced, and upstream `@mediabunny/dnx` packaging.
