@@ -15,10 +15,6 @@ type DnxWebGpuPixelFormat =
   | "gbrp10"
   | "gbrp12";
 
-interface NavigatorWithGpu extends Navigator {
-  gpu?: GpuApi;
-}
-
 interface GpuApi {
   getPreferredCanvasFormat(): string;
   requestAdapter(options?: unknown): Promise<GpuAdapter | null>;
@@ -109,7 +105,7 @@ export class DnxWebGpuRenderer {
       return null;
     }
 
-    const gpu = (navigator as NavigatorWithGpu).gpu;
+    const gpu = (navigator as unknown as { gpu?: GpuApi }).gpu;
     if (!gpu) {
       return null;
     }
