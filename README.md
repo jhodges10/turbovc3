@@ -126,7 +126,7 @@ npm test
 npm run test:package
 ```
 
-Native development additionally requires Zig `0.15.2` and Emscripten `6.0.2`:
+Native development additionally requires Zig `0.16.0` and Emscripten `6.0.2`:
 
 ```sh
 npm run build:wasm

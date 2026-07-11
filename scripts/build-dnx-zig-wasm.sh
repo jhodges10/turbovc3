@@ -5,16 +5,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src/native/dnx_row_decoder.zig"
 OUT_DIR="$ROOT/wasm/generated"
-EXPECTED_ZIG_VERSION="0.15.2"
+EXPECTED_ZIG_VERSION="0.16.0"
 
 if [[ -n "${ZIG:-}" ]]; then
   ZIG_BIN="$ZIG"
-elif [[ -x "/opt/homebrew/opt/zig@0.15/bin/zig" ]]; then
-  ZIG_BIN="/opt/homebrew/opt/zig@0.15/bin/zig"
+elif [[ -x "/opt/homebrew/opt/zig@0.16/bin/zig" ]]; then
+  ZIG_BIN="/opt/homebrew/opt/zig@0.16/bin/zig"
 elif command -v zig >/dev/null 2>&1; then
   ZIG_BIN="$(command -v zig)"
 else
-  echo "Zig $EXPECTED_ZIG_VERSION is required; install with: brew install zig@0.15" >&2
+  echo "Zig $EXPECTED_ZIG_VERSION is required; see https://ziglang.org/download/" >&2
   exit 1
 fi
 
