@@ -59,7 +59,7 @@
   "peerDependencies": { "mediabunny": "^1.50.8" },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.1",
     "mediabunny": "1.50.8",
     "typescript": "^5.8.0"
   }
