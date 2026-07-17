@@ -34,6 +34,7 @@ All notable changes to turbovc3 will be documented here.
 - Decoder contract coverage proving unknown CIDs cannot be accepted from plausible dimensions or packet sizes.
 - Cross-partition MXF validation for linked partitions, footer pointers, KAG alignment, RIP entries, and SID ownership.
 - Audio-authoritative video sync decisions, end-of-stream clock state, and opt-in audio underrun recovery.
+- Deployment and lifetime guidance for bundlers, CSP, cross-origin isolation, assets, and owned resources.
 
 ### Changed
 

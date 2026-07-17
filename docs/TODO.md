@@ -161,11 +161,11 @@ Initial performance target:
 
 - [ ] Define the intended `1.0` public API and keep worker protocols, reconstruction tables, and native implementation
   details private.
-- [ ] Document ownership and lifetime rules for `Decoder`, `Frame`, packet buffers, workers, renderers, and audio
+- [x] Document ownership and lifetime rules for `Decoder`, `Frame`, packet buffers, workers, renderers, and audio
   contexts.
 - [x] Add API Extractor reports for the root and `/mxf` entry points to CI so accidental exports and breaking type
   changes are visible.
-- [ ] Publish recipes for Vite, Next.js, Webpack, CSP-constrained deployments, worker URLs, WASM asset hosting, and
+- [x] Publish recipes for Vite, Next.js, Webpack, CSP-constrained deployments, worker URLs, WASM asset hosting, and
   COOP/COEP headers.
 - [ ] Add a small maintained example application that demonstrates file open, decode, playback, audio, seek, and
   backend diagnostics without moving codec behavior into the example.

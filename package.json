@@ -39,6 +39,7 @@
   "files": [
     "README.md",
     "LICENSE",
+    "docs/deployment.md",
     "dist",
     "wasm/generated/*.wasm"
   ],
