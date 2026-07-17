@@ -509,6 +509,16 @@ async function runOracleComparison(decoder, fixture) {
         JSON.stringify(fixture.expected.pixelAspectRatio),
         `${fixture.name} pixel aspect ratio`
       );
+      const rawSessionFrame = await decoder.decodeFirstPacketViaCodecSession(fixture.output);
+      assertEqual(
+        JSON.stringify(rawSessionFrame.pixelAspectRatio),
+        JSON.stringify({
+          numerator: fixture.expected.pixelAspectRatio.num,
+          denominator: fixture.expected.pixelAspectRatio.den
+        }),
+        `${fixture.name} raw codec-session pixel aspect ratio`
+      );
+      assertEqual(rawSessionFrame.scanType, "progressive", `${fixture.name} raw codec-session scan type`);
     }
     if (fixture.expected.adaptiveColorTransform !== undefined) {
       assertEqual(
@@ -920,7 +930,9 @@ async function loadBundledDecoder() {
               durationUs: event.frame.durationUs,
               width: event.frame.width,
               height: event.frame.height,
-              format: event.frame.format
+              format: event.frame.format,
+              pixelAspectRatio: event.frame.pixelAspectRatio,
+              scanType: event.frame.scanType
             });
           } else if (event.type === "done") {
             doneFrames = event.framesDecoded;
@@ -931,6 +943,22 @@ async function loadBundledDecoder() {
       }
 
       return { events, frames, metadata, doneFrames };
+    }
+
+    export async function decodeFirstPacketViaCodecSession(filePath) {
+      const sourceBytes = new Uint8Array(await readFile(filePath));
+      const packet = findDnxFramePackets(sourceBytes, { maxFrames: 1 })[0];
+      if (!packet) throw new Error("No DNx packet found in " + filePath);
+      const session = await dnxCodec.createSession({ preferWebGpu: false, concurrency: 0 });
+      try {
+        for await (const event of session.decode({ bytes: packet.bytes, filename: "packet.dnx" })) {
+          if (event.type === "frame") return event.frame;
+          if (event.type === "error") throw new Error(event.message);
+        }
+      } finally {
+        await session.close();
+      }
+      throw new Error("Raw DNx codec session emitted no frame.");
     }
 
     export async function decodeRandomAccessFrames(filePath, indices, options = {}) {
