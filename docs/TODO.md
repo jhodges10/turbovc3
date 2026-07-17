@@ -95,6 +95,9 @@ Initial performance target:
 - [x] Verify worker and main-thread errors preserve stable typed error categories and useful packet/row context.
 - [ ] Expand oracle comparisons to cover frame edges, coded padding, odd visible dimensions, and all output plane
   strides.
+- [x] Cover odd visible dimensions, coded-frame edges, padded input/output strides, and the full 8/10/12-bit
+  4:2:0/4:2:2/4:4:4 conversion layout matrix with deterministic synthetic contracts; real odd-dimension codec
+  oracles remain dependent on a conforming source.
 - [ ] Run sanitizer-backed native tests where the Zig/Emscripten toolchains support them.
 
 ## P1: Audio and A/V Playback

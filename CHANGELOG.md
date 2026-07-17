@@ -54,6 +54,8 @@ All notable changes to turbovc3 will be documented here.
   layout metadata, plus explicit rejection of non-portable high-bit-depth and GBR layouts.
 - A reproducible decode benchmark covering synchronous and native backends, worker concurrency, retained frame
   allocations, close-under-load draining, and cold/warm source-backed MXF seeks.
+- Deterministic 8/10/12-bit contracts for odd visible dimensions, coded-frame edges, source/destination padding,
+  and every converted output plane stride across 4:2:0, 4:2:2, and 4:4:4 layouts.
 
 ### Changed
 
