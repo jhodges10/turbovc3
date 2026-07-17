@@ -1,4 +1,5 @@
 const fast_idct = @import("dnx_fast_idct.zig");
+const std = @import("std");
 
 const MAX_ROW_BYTES = 1024 * 1024;
 const MAX_PACKET_BYTES = 8 * 1024 * 1024;
@@ -251,16 +252,17 @@ export fn dnx_decode_frame(
     level_shift: u32,
     is_444: u32,
 ) u32 {
-    const bytes_per_sample: u32 = if (bit_depth == 8) 1 else 2;
-    const plane_count: u32 = if (is_444 != 0) 3 else 2;
-    const frame_byte_length = macroblock_width * 16 * macroblock_height * 16 * plane_count * bytes_per_sample;
     if (packet_length > MAX_PACKET_BYTES or macroblock_width == 0 or macroblock_width > MAX_MACROBLOCKS or
-        macroblock_height == 0 or macroblock_height > MAX_ROWS or frame_byte_length > MAX_FRAME_BYTES or
+        macroblock_height == 0 or macroblock_height > MAX_ROWS or
         (bit_depth != 8 and bit_depth != 10 and bit_depth != 12) or ac_info_length > MAX_AC_INFO or
         run_values_length > MAX_RUN_VALUES or level_shift > 31 or is_444 > 1)
     {
         return @intFromEnum(DecodeError.invalid_arguments);
     }
+    const bytes_per_sample: u64 = if (bit_depth == 8) 1 else 2;
+    const plane_count: u64 = if (is_444 != 0) 3 else 2;
+    const frame_byte_length = @as(u64, macroblock_width) * 16 * macroblock_height * 16 * plane_count * bytes_per_sample;
+    if (frame_byte_length > MAX_FRAME_BYTES) return @intFromEnum(DecodeError.invalid_arguments);
 
     for (0..macroblock_height) |row| {
         diagnostic_row = @intCast(row);
@@ -288,6 +290,19 @@ export fn dnx_decode_frame(
 
     diagnostic_stage = 6;
     return @intFromEnum(DecodeError.ok);
+}
+
+test "native capacity exports and oversized arguments are safe" {
+    try std.testing.expectEqual(@as(u32, MAX_MACROBLOCKS), dnx_macroblock_capacity());
+    try std.testing.expectEqual(@as(u32, MAX_ROWS), dnx_rows_capacity());
+    try std.testing.expectEqual(
+        @intFromEnum(DecodeError.invalid_arguments),
+        dnx_decode_row(0, MAX_MACROBLOCKS + 1, 8, 0, 0, 0, 0, 0, 0, 0),
+    );
+    try std.testing.expectEqual(
+        @intFromEnum(DecodeError.invalid_arguments),
+        dnx_decode_frame(0, std.math.maxInt(u32), std.math.maxInt(u32), 12, 0, 0, 0, 0, 0, 0, 1),
+    );
 }
 
 fn decodeRowIntoFrame(

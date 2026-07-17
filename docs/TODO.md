@@ -100,7 +100,9 @@ Initial performance target:
 - [x] Cover odd visible dimensions, coded-frame edges, padded input/output strides, and the full 8/10/12-bit
   4:2:0/4:2:2/4:4:4 conversion layout matrix with deterministic synthetic contracts; real odd-dimension codec
   oracles remain dependent on a conforming source.
-- [ ] Run sanitizer-backed native tests where the Zig/Emscripten toolchains support them.
+- [x] Run the C IDCT kernel under native ASan/UBSan and the Zig row/frame decoder under Debug safety checks in native
+  CI and release verification; standalone Emscripten WASM remains covered by parity tests rather than a sanitizer
+  runtime that it does not embed.
 
 ## P1: Audio and A/V Playback
 
