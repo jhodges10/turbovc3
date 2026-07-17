@@ -174,6 +174,35 @@ async function testLazyDnxAdapter(module, relativePath) {
     module.demuxDnxMxf(unsupportedPattern),
     /supports OP1a and OPAtom.*received/
   );
+  const materialPackage = parsed.metadataSets.find((set) => set.type === "MaterialPackage");
+  assert.ok(materialPackage);
+  const missingMaterialPackage = bytes.slice();
+  missingMaterialPackage[materialPackage.offset + 15] = 0x7f;
+  await assert.rejects(
+    module.demuxDnxMxf(missingMaterialPackage),
+    /OP1a DNx MXF has no material-package composition/
+  );
+  const linkedSourceClip = parsed.metadataSets.find((set) =>
+    set.type === "SourceClip" && set.items.some((item) =>
+      item.localTag === 0x1101 && item.value.some((value) => value !== 0)
+    )
+  );
+  assert.ok(linkedSourceClip);
+  const sourceClipKlv = parsed.klvPackets.find((packet) => packet.offset === linkedSourceClip.offset);
+  assert.ok(sourceClipKlv);
+  const brokenSourceClip = bytes.slice();
+  const sourcePackageTag = findBytes(
+    brokenSourceClip,
+    Uint8Array.from([0x11, 0x01, 0x00, 0x20]),
+    sourceClipKlv.valueOffset,
+    sourceClipKlv.nextOffset
+  );
+  assert.notEqual(sourcePackageTag, -1);
+  brokenSourceClip.fill(0, sourcePackageTag + 4, sourcePackageTag + 36);
+  await assert.rejects(
+    module.demuxDnxMxf(brokenSourceClip),
+    /DNx track 2 is not referenced by a resolvable material SourceClip/
+  );
   await assert.rejects(
     module.MxfDemuxer.open(bytes, { limits: { maxTracks: 1 } }),
     /tracks exceed the configured limit of 1/

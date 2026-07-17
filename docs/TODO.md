@@ -174,7 +174,8 @@ Initial performance target:
 - [x] Expose material/source timecode tracks and a stable edit-unit mapping API with ordinary and drop-frame
   formatting, origins, duration, edit rates, and 24-hour wrapping.
 - [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.
-- [ ] Validate operational-pattern-specific structural requirements beyond the current OP1a/OPAtom fixtures.
+- [x] Validate the narrow adapter's operational structure: OPAtom has exactly one essence track, OP1a/OPAtom expose
+  a material composition, and the selected DNx source track is reached through a resolvable SourceClip.
 - [ ] Add fixtures from FFmpeg, Avid, Adobe, Resolve, and other generators where licensing permits redistribution.
 - [x] Keep the root DNx adapter scoped to OP1a and OPAtom with explicit rejection for other labels; do not imply
   general OP1b or growing-file support until packet timelines are tested.
