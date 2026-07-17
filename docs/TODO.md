@@ -79,7 +79,8 @@ Initial performance target:
   macroblock count, and frame size.
 - [ ] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, partition chains,
   index arrays, random index packs, and out-of-range offsets.
-- [ ] Add fuzz targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing.
+- [x] Add deterministic mutation targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing to PR
+  CI, with a larger local campaign available through `npm run test:fuzz`.
 - [x] Enforce configurable MXF limits for metadata size, KLV count, track count, packet count, descriptor dimensions,
   and resynchronization work. Native frame allocation limits remain tracked under the performance gates.
 - [ ] Verify worker and main-thread errors preserve stable typed error categories and useful packet/frame context.
@@ -153,8 +154,8 @@ Initial performance target:
   details private.
 - [ ] Document ownership and lifetime rules for `Decoder`, `Frame`, packet buffers, workers, renderers, and audio
   contexts.
-- [ ] Add API Extractor or an equivalent public-surface diff to CI so accidental exports and breaking type changes
-  are visible.
+- [x] Add API Extractor reports for the root and `/mxf` entry points to CI so accidental exports and breaking type
+  changes are visible.
 - [ ] Publish recipes for Vite, Next.js, Webpack, CSP-constrained deployments, worker URLs, WASM asset hosting, and
   COOP/COEP headers.
 - [ ] Add a small maintained example application that demonstrates file open, decode, playback, audio, seek, and

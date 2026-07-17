@@ -32,7 +32,12 @@
       "import": "./dist/mxf/index.js"
     }
   },
-  "files": ["README.md", "LICENSE", "dist", "wasm/generated/*.wasm"],
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist",
+    "wasm/generated/*.wasm"
+  ],
   "license": "MPL-2.0",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
@@ -43,21 +48,29 @@
     "prepare": "npm run build",
     "prepack": "npm run build",
     "check": "tsc --noEmit -p tsconfig.json",
+    "api:report": "npm run build && api-extractor run && api-extractor run --config api-extractor.mxf.json",
+    "api:report:update": "npm run build && api-extractor run --local && api-extractor run --local --config api-extractor.mxf.json",
     "build:wasm-kernel": "bash scripts/build-dnx-wasm.sh",
     "build:zig-wasm": "bash scripts/build-dnx-zig-wasm.sh",
     "build:wasm": "npm run build:wasm-kernel && npm run build:zig-wasm",
     "fixtures:generate": "node tests/dnx-oracle-test.mjs --generate --allow-missing",
     "fixtures:verify": "node tests/committed-fixtures-test.mjs",
     "test": "npm run test:unit && npm run test:fixtures",
-    "test:unit": "node tests/dnx-pixel-conversion-test.mjs && node tests/dnx-webgpu-renderer-test.mjs && node tests/dnx-decoder-contract-test.mjs && node tests/mxf-demuxer-test.mjs",
+    "test:unit": "node tests/dnx-pixel-conversion-test.mjs && node tests/dnx-webgpu-renderer-test.mjs && node tests/dnx-decoder-contract-test.mjs && node tests/mxf-demuxer-test.mjs && node tests/fuzz-smoke-test.mjs",
+    "test:fuzz": "node tests/fuzz-smoke-test.mjs --iterations 256",
     "test:fixtures": "node tests/committed-fixtures-test.mjs",
     "test:extended": "node tests/dnx-oracle-test.mjs --allow-missing",
     "test:native": "node tests/dnx-wasm-kernel-test.mjs && node tests/committed-fixtures-test.mjs --require-native",
     "test:package": "node tests/package-smoke-test.mjs"
   },
-  "engines": { "node": ">=22" },
-  "peerDependencies": { "mediabunny": "^1.50.8" },
+  "engines": {
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "mediabunny": "^1.50.8"
+  },
   "devDependencies": {
+    "@microsoft/api-extractor": "7.58.11",
     "@types/node": "^26.1.0",
     "esbuild": "^0.28.1",
     "mediabunny": "1.50.8",

@@ -87,7 +87,7 @@ export class DnxNotSupportedError extends DnxDecoderError {
 export class DnxReconstructionPendingError extends DnxNotSupportedError {
   constructor(
     message: string,
-    readonly state: DnxReconstructionState
+    readonly state: unknown
   ) {
     super(message);
     this.name = "DnxReconstructionPendingError";
@@ -242,7 +242,7 @@ export class Decoder implements AsyncDisposable {
     return this.closed;
   }
 
-  get idctMode(): DnxIdctMode | DnxRowDecoder["mode"] | string {
+  get idctMode(): string {
     return this.sharedRowDecoder?.mode ?? this.workerPool?.mode ?? this.rowDecoder?.mode ?? this.idctKernel?.mode ?? "uninitialized";
   }
 
