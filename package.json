@@ -42,6 +42,7 @@
     "docs/deployment.md",
     "docs/benchmarks.md",
     "docs/compatibility.md",
+    "docs/api-stability.md",
     "dist",
     "wasm/generated/*.wasm"
   ],
