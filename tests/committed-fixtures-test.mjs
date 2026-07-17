@@ -12,6 +12,12 @@ const manifest = JSON.parse(await readFile(path.join(fixtureDir, "manifest.json"
 const requiredFiles = [
   "oracle_dnxhd_1080i2997_10bit_cid1241.mxf",
   "oracle_dnxhd_1080i2997_10bit_cid1241.yuv.gz",
+  "oracle_dnxhd_1080i2997_8bit_cid1242.mxf",
+  "oracle_dnxhd_1080i2997_8bit_cid1242.yuv.gz",
+  "oracle_dnxhd_1080i2997_8bit_cid1243.mxf",
+  "oracle_dnxhd_1080i2997_8bit_cid1243.yuv.gz",
+  "oracle_dnxhd_1440x1080i2997_8bit_cid1244.mxf",
+  "oracle_dnxhd_1440x1080i2997_8bit_cid1244.yuv.gz",
   "oracle_dnxhd_720p30_10bit_cid1250.mxf",
   "oracle_dnxhd_720p30_10bit_cid1250.yuv.gz",
   "oracle_dnxhd_720p30_8bit_cid1251.mxf",

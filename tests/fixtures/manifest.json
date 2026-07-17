@@ -17,6 +17,45 @@
       "sha256": "07d4259d9f80bd72103c7b90ab58cf250d5aed0edcc388f97b9def3cd5f5d69a"
     },
     {
+      "path": "oracle_dnxhd_1080i2997_8bit_cid1242.mxf",
+      "sha256": "91045e4a2505d7ea928a83c470871d3b321d85923f7b29325328f57a92283230",
+      "cid": 1242,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv422p8",
+      "scanType": "interlaced-top-field-first"
+    },
+    {
+      "path": "oracle_dnxhd_1080i2997_8bit_cid1242.yuv.gz",
+      "sha256": "ec267edb109d2db64d2e8b232de28a901be691b39e082761d478c3495ca39b14"
+    },
+    {
+      "path": "oracle_dnxhd_1080i2997_8bit_cid1243.mxf",
+      "sha256": "2ee2a3ce4cf7e6ebab8d7efdc0fce7a408deea9a8dadd55be26a6cd416601ae4",
+      "cid": 1243,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv422p8",
+      "scanType": "interlaced-top-field-first"
+    },
+    {
+      "path": "oracle_dnxhd_1080i2997_8bit_cid1243.yuv.gz",
+      "sha256": "0365be855a4e120d517fec63338289c08212f2c504ece7162171c648c9b04bc4"
+    },
+    {
+      "path": "oracle_dnxhd_1440x1080i2997_8bit_cid1244.mxf",
+      "sha256": "7970c4da563e0740163ede5dfeca65a9c05e25a88b9883cf63aab536309cf4ea",
+      "cid": 1244,
+      "width": 1440,
+      "height": 1080,
+      "pixelFormat": "yuv422p8",
+      "scanType": "interlaced-top-field-first"
+    },
+    {
+      "path": "oracle_dnxhd_1440x1080i2997_8bit_cid1244.yuv.gz",
+      "sha256": "385cc1e894e13b6a322563a6082bac1e826433e4c5960707253d609cd2c11605"
+    },
+    {
       "path": "oracle_dnxhd_720p30_10bit_cid1250.mxf",
       "sha256": "2ac132bafbac43c6dac9617e2e8184b323c9d488bd8de906c00d592b6bde9fab",
       "cid": 1250,
