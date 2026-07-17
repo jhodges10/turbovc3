@@ -741,6 +741,10 @@ export class MxfDemuxer {
     // (undocumented)
     readonly result: MxfDemuxResult;
     // (undocumented)
+    timecodeAt(track: MxfTimecodeTrack, editUnit: number): MxfTimecode;
+    // (undocumented)
+    get timecodeTracks(): readonly MxfTimecodeTrack[];
+    // (undocumented)
     get tracks(): readonly MxfTrack[];
 }
 
@@ -812,6 +816,8 @@ export interface MxfDemuxResult {
     randomIndex: readonly MxfRandomIndexEntry[];
     // (undocumented)
     source: MxfSource;
+    // (undocumented)
+    timecodeTracks: readonly MxfTimecodeTrack[];
     // (undocumented)
     tracks: readonly MxfTrack[];
 }
@@ -945,6 +951,9 @@ export interface MxfMetadataSet {
 }
 
 // @public (undocumented)
+export type MxfPackageKind = "material" | "source";
+
+// @public (undocumented)
 export interface MxfPacket {
     // (undocumented)
     byteLength: number;
@@ -1043,6 +1052,50 @@ export interface MxfSource {
 
 // @public (undocumented)
 export type MxfSourceInput = MxfSource | Uint8Array | ArrayBuffer | Blob;
+
+// @public (undocumented)
+export interface MxfTimecode {
+    // (undocumented)
+    dropFrame: boolean;
+    // (undocumented)
+    formatted: string;
+    // (undocumented)
+    frameNumber: number;
+    // (undocumented)
+    frames: number;
+    // (undocumented)
+    hours: number;
+    // (undocumented)
+    minutes: number;
+    // (undocumented)
+    seconds: number;
+}
+
+// @public (undocumented)
+export interface MxfTimecodeTrack {
+    // (undocumented)
+    dropFrame: boolean;
+    // (undocumented)
+    duration: number | null;
+    // (undocumented)
+    editRate: MxfRational;
+    // (undocumented)
+    name: string | null;
+    // (undocumented)
+    origin: number;
+    // (undocumented)
+    packageInstanceUid: string | null;
+    // (undocumented)
+    packageKind: MxfPackageKind;
+    // (undocumented)
+    packageUid: string | null;
+    // (undocumented)
+    roundedTimecodeBase: number;
+    // (undocumented)
+    startTimecode: number;
+    // (undocumented)
+    trackId: number;
+}
 
 // @public (undocumented)
 export interface MxfTrack {

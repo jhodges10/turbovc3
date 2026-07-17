@@ -67,7 +67,16 @@ if (!videoTrack) throw new Error("No MXF video track found.");
 
 const firstPacket = demuxer.packetsForTrack(videoTrack)[0];
 const encodedFrame = await demuxer.readPacket(firstPacket);
+
+const materialTimecode = demuxer.timecodeTracks.find((track) => track.packageKind === "material");
+if (materialTimecode) {
+  console.log(demuxer.timecodeAt(materialTimecode, firstPacket.index).formatted);
+}
 ```
+
+Timecode tracks retain their material/source package identity, edit rate, origin, duration, rounded base, and
+drop-frame flag. `timecodeAt()` accepts an edit-unit index and returns both the unwrapped frame number and a
+24-hour-wrapped `HH:MM:SS:FF` or drop-frame `HH:MM:SS;FF` display value.
 
 MXF BWF-style little-endian PCM can drive the same playback clock used for MOV/MP4 audio:
 
@@ -122,7 +131,7 @@ jobs already accepted by the underlying decoder.
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
-| MXF | OP1a and OPAtom DNx essence; PCM track metadata and packet extraction |
+| MXF | OP1a and OPAtom DNx essence; PCM packets; material/source timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
 CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,

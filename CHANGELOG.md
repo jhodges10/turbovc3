@@ -41,6 +41,7 @@ All notable changes to turbovc3 will be documented here.
 - Paired DNxHR 4:4:4 YUV/GBR oracles proving adaptive-color-transform selection and planar channel ordering.
 - Bit-exact committed FFmpeg oracles for DNxHD CIDs 1235/1237 and DNxHR LB/SQ/HQ CIDs 1274/1273/1272, completing
   required CI coverage for every progressive DNx profile FFmpeg 8 can emit.
+- Material/source MXF timecode-track exposure with edit-unit mapping and ordinary/drop-frame SMPTE formatting.
 
 ### Changed
 

@@ -89,6 +89,32 @@ export interface MxfTrack {
   packetCount: number;
 }
 
+export type MxfPackageKind = "material" | "source";
+
+export interface MxfTimecodeTrack {
+  packageKind: MxfPackageKind;
+  packageUid: string | null;
+  packageInstanceUid: string | null;
+  trackId: number;
+  name: string | null;
+  editRate: MxfRational;
+  origin: number;
+  duration: number | null;
+  startTimecode: number;
+  roundedTimecodeBase: number;
+  dropFrame: boolean;
+}
+
+export interface MxfTimecode {
+  frameNumber: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  frames: number;
+  dropFrame: boolean;
+  formatted: string;
+}
+
 export interface MxfEssenceElement {
   index: number;
   trackNumber: number;
@@ -146,6 +172,7 @@ export interface MxfDemuxResult {
   metadataSets: readonly MxfMetadataSet[];
   descriptors: readonly MxfDescriptor[];
   tracks: readonly MxfTrack[];
+  timecodeTracks: readonly MxfTimecodeTrack[];
   essenceElements: readonly MxfEssenceElement[];
   indexTableSegments: readonly MxfIndexTableSegment[];
   randomIndex: readonly MxfRandomIndexEntry[];

@@ -14,6 +14,8 @@ import type {
   MxfPartitionKind,
   MxfRandomIndexEntry,
   MxfRational,
+  MxfTimecode,
+  MxfTimecodeTrack,
   MxfTrack,
   MxfTrackKind
 } from "./mxfTypes.js";
@@ -105,6 +107,14 @@ export class MxfDemuxer {
 
   get packets(): readonly MxfPacket[] {
     return this.result.packets;
+  }
+
+  get timecodeTracks(): readonly MxfTimecodeTrack[] {
+    return this.result.timecodeTracks;
+  }
+
+  timecodeAt(track: MxfTimecodeTrack, editUnit: number): MxfTimecode {
+    return mxfTimecodeAtEditUnit(track, editUnit);
   }
 
   packetsForTrack(track: MxfTrack | number): readonly MxfPacket[] {
@@ -201,7 +211,8 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     enforceDimensions(descriptor, limits);
   }
   const tracks = buildTracks(metadataSets, descriptors, essenceElements);
-  enforceCount("tracks", tracks.length, limits.maxTracks);
+  const timecodeTracks = buildTimecodeTracks(metadataSets);
+  enforceCount("tracks", tracks.length + timecodeTracks.length, limits.maxTracks);
   const packets = buildPackets(tracks, essenceElements, indexTableSegments);
   enforceCount("packets", packets.length, limits.maxPackets);
   for (const track of tracks) {
@@ -225,10 +236,58 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     metadataSets,
     descriptors,
     tracks,
+    timecodeTracks,
     essenceElements,
     indexTableSegments,
     randomIndex,
     packets
+  };
+}
+
+export function mxfTimecodeAtEditUnit(track: MxfTimecodeTrack, editUnit: number): MxfTimecode {
+  if (!Number.isSafeInteger(editUnit)) {
+    throw new RangeError("MXF timecode edit unit must be a safe integer.");
+  }
+  const base = track.roundedTimecodeBase;
+  if (!Number.isSafeInteger(base) || base < 1) {
+    throw new RangeError("MXF rounded timecode base must be a positive safe integer.");
+  }
+  if (track.dropFrame && base !== 30 && base !== 60) {
+    throw new RangeError(`Drop-frame MXF timecode requires a base of 30 or 60, received ${base}.`);
+  }
+
+  const frameNumber = track.startTimecode + track.origin + editUnit;
+  if (!Number.isSafeInteger(frameNumber)) {
+    throw new RangeError("MXF timecode frame number exceeds JavaScript's safe integer range.");
+  }
+  const droppedPerMinute = track.dropFrame ? (base === 60 ? 4 : 2) : 0;
+  const framesPer10Minutes = base * 60 * 10 - droppedPerMinute * 9;
+  const framesPer24Hours = track.dropFrame ? framesPer10Minutes * 6 * 24 : base * 60 * 60 * 24;
+  let displayFrame = ((frameNumber % framesPer24Hours) + framesPer24Hours) % framesPer24Hours;
+  if (track.dropFrame) {
+    const framesPerDropMinute = base * 60 - droppedPerMinute;
+    const tenMinuteBlocks = Math.floor(displayFrame / framesPer10Minutes);
+    const remainder = displayFrame % framesPer10Minutes;
+    displayFrame += droppedPerMinute * 9 * tenMinuteBlocks;
+    if (remainder >= droppedPerMinute) {
+      displayFrame += droppedPerMinute * Math.floor((remainder - droppedPerMinute) / framesPerDropMinute);
+    }
+  }
+
+  const hours = Math.floor(displayFrame / (base * 60 * 60));
+  const minutes = Math.floor(displayFrame / (base * 60)) % 60;
+  const seconds = Math.floor(displayFrame / base) % 60;
+  const frames = displayFrame % base;
+  const separator = track.dropFrame ? ";" : ":";
+  const pad = (value: number) => value.toString().padStart(2, "0");
+  return {
+    frameNumber,
+    hours,
+    minutes,
+    seconds,
+    frames,
+    dropFrame: track.dropFrame,
+    formatted: `${pad(hours)}:${pad(minutes)}:${pad(seconds)}${separator}${pad(frames)}`
   };
 }
 
@@ -576,6 +635,59 @@ function buildTracks(
   return [...byNumber.values()];
 }
 
+function buildTimecodeTracks(metadataSets: readonly MxfMetadataSet[]): MxfTimecodeTrack[] {
+  const setsByUid = new Map(
+    metadataSets
+      .filter((set): set is MxfMetadataSet & { instanceUid: string } => set.instanceUid !== null)
+      .map((set) => [set.instanceUid, set])
+  );
+  const result: MxfTimecodeTrack[] = [];
+  for (const packageSet of metadataSets) {
+    if (packageSet.type !== "MaterialPackage" && packageSet.type !== "SourcePackage") {
+      continue;
+    }
+    for (const trackUid of itemReferenceArray(packageSet, 0x4403)) {
+      const trackSet = setsByUid.get(trackUid);
+      if (!trackSet || (trackSet.type !== "Track" && trackSet.type !== "StaticTrack")) {
+        continue;
+      }
+      const trackId = itemU32(trackSet, 0x4801);
+      const editRate = itemRational(trackSet, 0x4b01);
+      const sequenceUid = itemUid(trackSet, 0x4803);
+      const sequence = sequenceUid ? setsByUid.get(sequenceUid) : null;
+      if (trackId === null || !editRate || sequence?.type !== "Sequence") {
+        continue;
+      }
+      const component = itemReferenceArray(sequence, 0x1001)
+        .map((uid) => setsByUid.get(uid))
+        .find((set) => set?.type === "TimecodeComponent");
+      if (!component) {
+        continue;
+      }
+      const startTimecode = itemI64(component, 0x1501);
+      const roundedTimecodeBase = itemU16(component, 0x1502);
+      const dropFrameValue = item(component.items, 0x1503);
+      if (startTimecode === null || roundedTimecodeBase === null || !dropFrameValue?.length) {
+        continue;
+      }
+      result.push({
+        packageKind: packageSet.type === "MaterialPackage" ? "material" : "source",
+        packageUid: itemHex(packageSet, 0x4401),
+        packageInstanceUid: packageSet.instanceUid,
+        trackId,
+        name: itemString(trackSet, 0x4802),
+        editRate,
+        origin: itemI64(trackSet, 0x4b02) ?? 0,
+        duration: itemI64(sequence, 0x0202) ?? itemI64(component, 0x0202),
+        startTimecode,
+        roundedTimecodeBase,
+        dropFrame: dropFrameValue[0] !== 0
+      });
+    }
+  }
+  return result;
+}
+
 function buildPackets(
   tracks: readonly MxfTrack[],
   essence: readonly MxfEssenceElement[],
@@ -728,6 +840,32 @@ function item(items: readonly MxfLocalSetItem[], localTag: number): Uint8Array |
 function itemU32(set: MxfMetadataSet, localTag: number): number | null {
   const value = item(set.items, localTag);
   return value && value.length >= 4 ? readU32BE(value, 0) : null;
+}
+
+function itemU16(set: MxfMetadataSet, localTag: number): number | null {
+  const value = item(set.items, localTag);
+  return value && value.length >= 2 ? readU16BE(value, 0) : null;
+}
+
+function itemUid(set: MxfMetadataSet, localTag: number): string | null {
+  const value = item(set.items, localTag);
+  return value && value.length >= 16 ? hex(value.subarray(0, 16)) : null;
+}
+
+function itemReferenceArray(set: MxfMetadataSet, localTag: number): string[] {
+  const value = item(set.items, localTag);
+  if (!value || value.length < 8) {
+    return [];
+  }
+  const count = readU32BE(value, 0);
+  const itemLength = readU32BE(value, 4);
+  if (itemLength < 16 || count > Math.floor((value.length - 8) / itemLength)) {
+    return [];
+  }
+  return Array.from({ length: count }, (_, index) => {
+    const offset = 8 + index * itemLength;
+    return hex(value.subarray(offset, offset + 16));
+  });
 }
 
 function itemI64(set: MxfMetadataSet, localTag: number): number | null {
