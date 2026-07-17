@@ -39,6 +39,7 @@ await testFixture(module, "samples/mxf_demux_opatom_dnx.mxf", {
   operationalPattern: "060e2b34040101020d01020110030000"
 });
 await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf", 1);
+await testCompositionFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf", ["video", "audio"]);
 await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf", 1, {
   frameRate: 24,
@@ -58,6 +59,7 @@ await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
   frameRate: 30,
   operationalPattern: "060e2b34040101020d01020110030000"
 });
+await testCompositionFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", ["video"]);
 await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf");
 
 console.log("MXF demuxer contracts passed.");
@@ -356,6 +358,29 @@ async function testTimecodeFixture(module, relativePath, expected = {}) {
     assert.equal(timecode.frameNumber, expected.startTimecode ?? 0);
     assert.equal(timecode.dropFrame, false);
     assert.equal(timecode.formatted, expected.formatted ?? "00:00:00:00");
+  }
+}
+
+async function testCompositionFixture(module, relativePath, expectedKinds) {
+  const bytes = new Uint8Array(await readFile(path.join(repoRoot, relativePath)));
+  const demuxer = await module.MxfDemuxer.open(bytes);
+  assert.equal(demuxer.compositions.length, 1);
+  const composition = demuxer.compositions[0];
+  assert.equal(composition.packageUid?.length, 64);
+  assert.equal(composition.packageInstanceUid?.length, 32);
+  assert.deepEqual(composition.tracks.map((track) => track.kind), ["timecode", ...expectedKinds]);
+  const essenceTracks = composition.tracks.filter((track) => track.sourceClips.length > 0);
+  assert.deepEqual(essenceTracks.map((track) => track.kind), expectedKinds);
+  for (const compositionTrack of essenceTracks) {
+    assert.equal(compositionTrack.sourceClips.length, 1);
+    const clip = compositionTrack.sourceClips[0];
+    assert.equal(clip.startPosition, 0);
+    assert.equal(clip.duration, 1);
+    assert.ok(clip.sourceTrack);
+    assert.equal(clip.sourceTrack.kind, compositionTrack.kind);
+    assert.equal(clip.sourceTrack.id, clip.sourceTrackId);
+    assert.equal(clip.sourceTrack.sourcePackageUid, clip.sourcePackageUid);
+    assert.equal(clip.sourceTrack.sourcePackageInstanceUid?.length, 32);
   }
 }
 
