@@ -44,6 +44,13 @@ assert.deepEqual(Array.from(writes.at(-1).imageData.data), [40, 20, 30, 255]);
 assert.equal(canvas.width, 1);
 assert.equal(canvas.height, 1);
 assert.equal(module.DnxCanvasRenderer.supports(makeYuvFrame("yuv422p8", 2, 1, [16, 16], [128], [128])), true);
+assert.equal(
+  module.DnxCanvasRenderer.supports({
+    ...makeYuvFrame("yuv422p8", 2, 1, [16, 16], [128], [128]),
+    colorSpace: { matrix: "bt2020-cl" }
+  }),
+  false
+);
 assert.equal(module.DnxCanvasRenderer.supports({ index: 0, timestampUs: 0, width: 1, height: 1, format: "rgba8" }), false);
 assert.throws(() => renderer.render({ index: 0, timestampUs: 0, width: 1, height: 1, format: "rgba8" }), /does not support/);
 renderer.destroy();

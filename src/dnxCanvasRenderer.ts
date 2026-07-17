@@ -64,7 +64,12 @@ interface SupportedFrame extends DecodeFrame {
 }
 
 function supportedFrame(frame: DecodeFrame): SupportedFrame | null {
-  if (!isPixelFormat(frame.format) || !frame.planes || frame.planes.length < 3) {
+  if (
+    !isPixelFormat(frame.format) ||
+    !frame.planes ||
+    frame.planes.length < 3 ||
+    frame.colorSpace?.matrix === "bt2020-cl"
+  ) {
     return null;
   }
   if (!Number.isSafeInteger(frame.width) || !Number.isSafeInteger(frame.height) || frame.width < 1 || frame.height < 1) {
@@ -98,7 +103,7 @@ function convertToRgba(frame: SupportedFrame, rgba: Uint8ClampedArray): void {
   const sampleScale = frame.format.endsWith("p12") ? 1 / 16 : frame.format.endsWith("p10") ? 1 / 4 : 1;
   const chroma = chromaDimensions(frame.format, frame.width, frame.height);
   const isGbr = frame.format === "gbrp10" || frame.format === "gbrp12";
-  const isBt2020 = frame.colorSpace?.matrix === "bt2020-ncl" || frame.colorSpace?.matrix === "bt2020-cl";
+  const isBt2020 = frame.colorSpace?.matrix === "bt2020-ncl";
   const matrix = isBt2020
     ? { crToR: 1.678674, cbToG: -0.187326, crToG: -0.650424, cbToB: 2.141772 }
     : { crToR: 1.792741, cbToG: -0.213249, crToG: -0.532909, cbToB: 2.112402 };

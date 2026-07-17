@@ -143,6 +143,10 @@ jobs already accepted by the underlying decoder.
 | MXF | OP1a and OPAtom DNx essence; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
+Rec. 2020 constant-luminance signaling is preserved in frame metadata but is not rendered or converted to YUV yet:
+the DNx header does not carry the transfer-function detail needed to apply that transform faithfully. Renderer
+capability checks return `false` for those frames instead of approximating them as Rec. 2020 non-constant-luminance.
+
 | Profile family | CID coverage |
 | --- | --- |
 | Progressive DNxHD | CIDs 1235, 1237, 1238, 1250–1253, 1258, and 1259 are required FFmpeg oracles |

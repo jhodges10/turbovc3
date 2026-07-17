@@ -55,6 +55,8 @@ All notable changes to turbovc3 will be documented here.
 
 ### Changed
 
+- Rec. 2020 constant-luminance frames are now rejected by renderer/conversion capability checks rather than being
+  silently processed with the non-constant-luminance matrix.
 - MXF audio creation now returns `null` only when audio is absent; present but unsupported tracks throw a detailed
   `DnxNotSupportedError` instead of silently appearing as a file with no audio.
 - Packet-worker decode promises now settle in submission order while retaining concurrent execution.
