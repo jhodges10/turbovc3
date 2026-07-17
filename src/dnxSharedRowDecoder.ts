@@ -9,9 +9,10 @@ import type {
   DnxSharedRowWorkerRequest,
   DnxSharedRowWorkerResponse
 } from "./dnxSharedRowWorkerProtocol.js";
+import type { DnxWorker, DnxWorkerFactory } from "./dnxWorker.js";
 
 interface WorkerSlot {
-  worker: Worker;
+  worker: DnxWorker;
   failed: boolean;
 }
 
@@ -38,9 +39,12 @@ export class DnxSharedRowDecoder {
     this.concurrency = slots.length;
   }
 
-  static async create(concurrency: number): Promise<DnxSharedRowDecoder> {
+  static async create(concurrency: number, workerFactory: DnxWorkerFactory): Promise<DnxSharedRowDecoder> {
     const slots = Array.from({ length: Math.max(1, concurrency) }, () => ({
-      worker: new Worker(new URL("./workers/dnxSharedRowDecode.worker.js", import.meta.url), { type: "module" }),
+      worker: workerFactory(
+        "shared-row",
+        new URL("./workers/dnxSharedRowDecode.worker.js", import.meta.url)
+      ),
       failed: false
     }));
     const pool = new DnxSharedRowDecoder(slots);

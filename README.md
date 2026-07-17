@@ -130,6 +130,24 @@ Release packages include two WASM binaries. Decoder creation chooses the fastest
 Shared-memory decoding requires `Worker`, `SharedArrayBuffer`, and `crossOriginIsolated === true`, which normally means
 serving suitable COOP/COEP headers. The package does not require cross-origin isolation for ordinary decoding.
 
+Node.js can opt into the packet-worker pool through the dedicated entry point; it does not modify `globalThis.Worker`:
+
+```ts
+import { createNodeDecoder, Frame } from "@jhodges10/turbovc3/node";
+
+const decoder = await createNodeDecoder({
+  dnxFourCc: "AVdh",
+  useSharedMemory: false,
+  concurrency: 4
+});
+if (decoder instanceof Error) throw decoder;
+const result = await decoder.decode(packet, new Frame());
+await decoder.close();
+```
+
+Other runtimes and CSP-specific hosts can provide `DecoderOptions.workerFactory`; the core package does not assume a
+Node global or mutate runtime globals.
+
 Mediabunny `1.50.8` does not yet classify DNx as a native `VideoCodec`. Registration therefore installs a guarded
 compatibility shim that disables itself when a future Mediabunny release provides that support.
 

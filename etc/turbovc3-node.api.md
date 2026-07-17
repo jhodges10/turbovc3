@@ -5,6 +5,12 @@
 ```ts
 
 // @public (undocumented)
+export function createNodeDecoder(options: NodeDecoderOptions): Promise<DnxNotSupportedError | Decoder>;
+
+// @public (undocumented)
+export const createNodeWorker: DnxWorkerFactory;
+
+// @public (undocumented)
 export interface DecodeColorSpace {
     // (undocumented)
     fullRange: boolean;
@@ -976,6 +982,9 @@ export interface MxfTrack {
 
 // @public (undocumented)
 export type MxfTrackKind = "video" | "audio" | "data" | "system" | "unknown";
+
+// @public (undocumented)
+export type NodeDecoderOptions = Omit<DecoderOptions, "workerFactory">;
 
 // @public (undocumented)
 export function parseDnxFrameHeader(packet: Uint8Array, options?: {

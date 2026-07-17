@@ -1,13 +1,22 @@
-import type { DecodeOptions, FilledFrame, Frame, DecoderOptions } from "./dnxDecoder.js";
+import type { DecodeOptions, DnxPixelFormat, FilledFrame, Frame } from "./dnxDecoder.js";
 import type {
   DnxPacketWorkerRequest,
   DnxPacketWorkerResponse,
   DnxWorkerFrameContents
 } from "./dnxDecoderWorkerProtocol.js";
 import { dnxFrameMetadataForHeader } from "./dnxFrame.js";
+import type { DnxWorker, DnxWorkerFactory } from "./dnxWorker.js";
+import type { DnxFourCc } from "./dnxFrame.js";
+
+interface DnxWorkerPoolOptions {
+  dnxFourCc: DnxFourCc;
+  concurrency: number;
+  allowedOutputFormats: readonly DnxPixelFormat[];
+  workerFactory: DnxWorkerFactory | null;
+}
 
 interface WorkerSlot {
-  worker: Worker;
+  worker: DnxWorker;
   load: number;
   failed: boolean;
 }
@@ -43,9 +52,15 @@ export class DnxDecoderWorkerPool {
     this.concurrency = slots.length;
   }
 
-  static async create(options: Required<DecoderOptions>): Promise<DnxDecoderWorkerPool> {
+  static async create(options: DnxWorkerPoolOptions): Promise<DnxDecoderWorkerPool> {
+    if (!options.workerFactory) {
+      throw new Error("A DNx worker factory is required for packet-worker decoding.");
+    }
     const slots = Array.from({ length: options.concurrency }, () => ({
-      worker: new Worker(new URL("./workers/dnxPacketDecode.worker.js", import.meta.url), { type: "module" }),
+      worker: options.workerFactory!(
+        "packet",
+        new URL("./workers/dnxPacketDecode.worker.js", import.meta.url)
+      ),
       load: 0,
       failed: false
     }));
@@ -138,7 +153,7 @@ export class DnxDecoderWorkerPool {
     this.drainResolve = null;
   }
 
-  private initializeSlot(slot: WorkerSlot, options: Required<DecoderOptions>): Promise<void> {
+  private initializeSlot(slot: WorkerSlot, options: DnxWorkerPoolOptions): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const onMessage = (event: MessageEvent<DnxPacketWorkerResponse>) => {
         if (event.data.type === "ready") {
