@@ -56,6 +56,20 @@
       "sha256": "385cc1e894e13b6a322563a6082bac1e826433e4c5960707253d609cd2c11605"
     },
     {
+      "path": "oracle_dnxhd_1440x1080i2997_8bit_cid1260.mxf",
+      "sha256": "e751451c61b9df3b449ceedc0764b935255b165ca239c3871e228d74c7f34d60",
+      "cid": 1260,
+      "width": 1440,
+      "height": 1080,
+      "pixelFormat": "yuv422p8",
+      "scanType": "interlaced-top-field-first",
+      "mbaff": false
+    },
+    {
+      "path": "oracle_dnxhd_1440x1080i2997_8bit_cid1260.yuv.gz",
+      "sha256": "385cc1e894e13b6a322563a6082bac1e826433e4c5960707253d609cd2c11605"
+    },
+    {
       "path": "oracle_dnxhd_720p30_10bit_cid1250.mxf",
       "sha256": "2ac132bafbac43c6dac9617e2e8184b323c9d488bd8de906c00d592b6bde9fab",
       "cid": 1250,

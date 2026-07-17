@@ -41,6 +41,13 @@ mkdir -p "$OUTPUT_DIR"
   "$OUTPUT_DIR/oracle_dnxhd_1440x1080i2997_8bit_cid1244.mxf"
 
 "$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1440x1080:rate=30000/1001:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -vf setfield=tff -flags +ildct -top 1 \
+  -c:v dnxhd -profile:v dnxhd -strict -2 -b:v 80M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_1440x1080i2997_8bit_cid1260.mxf"
+
+"$FFMPEG" -v error -y \
   -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=1" \
   -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 90M -an \
   -metadata creation_time=1970-01-01T00:00:00Z \
@@ -107,6 +114,7 @@ for fixture in \
   "oracle_dnxhd_1080i2997_8bit_cid1242.mxf yuv422p" \
   "oracle_dnxhd_1080i2997_8bit_cid1243.mxf yuv422p" \
   "oracle_dnxhd_1440x1080i2997_8bit_cid1244.mxf yuv422p" \
+  "oracle_dnxhd_1440x1080i2997_8bit_cid1260.mxf yuv422p" \
   "oracle_dnxhd_720p30_8bit_cid1251.mxf yuv422p" \
   "oracle_dnxhd_720p30_10bit_cid1250.mxf yuv422p10le" \
   "oracle_dnxhd_720p30_8bit_cid1252.mxf yuv422p" \

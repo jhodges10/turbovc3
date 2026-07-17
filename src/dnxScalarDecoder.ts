@@ -236,6 +236,14 @@ const CID_TABLES = new Map<number, DnxScalarTableSet>([
   [1258, TABLE_1252_8BIT],
   [1259, TABLE_1237_8BIT],
   [
+    1260,
+    {
+      ...TABLE_1237_8BIT,
+      lumaWeight: DNXHD_1260_LUMA_WEIGHT,
+      chromaWeight: DNXHD_1260_CHROMA_WEIGHT
+    }
+  ],
+  [
     1251,
     {
       dcTable: DC_TABLE_1237,
