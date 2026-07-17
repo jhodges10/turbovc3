@@ -277,8 +277,8 @@ export class DnxDecodeSession implements DecodeSession {
           type: "metadata",
           codecId: "dnx",
           container: "MXF",
-          width: mxf.packets[0].header.width,
-          height: mxf.packets[0].header.height,
+          width: mxf.firstFrameHeader.width,
+          height: mxf.firstFrameHeader.height,
           frameCount: mxf.packets.length,
           durationUs: Math.round(
             (mxf.packets.length * mxf.editRate.denominator * 1_000_000) / mxf.editRate.numerator
@@ -286,7 +286,7 @@ export class DnxDecodeSession implements DecodeSession {
           details: {
             workerMode: this.workerMode,
             editRate: mxf.editRate,
-            header: mxf.packets[0].header,
+            header: mxf.firstFrameHeader,
             track: mxf.track,
             partitions: mxf.demuxer.result.partitions.length,
             indexTableSegments: mxf.demuxer.result.indexTableSegments.length,
@@ -296,18 +296,26 @@ export class DnxDecodeSession implements DecodeSession {
         };
 
         let decodedFrames = 0;
-        const decoder = await this.createDecoder(mxf.packets[0].header);
+        const decoder = await this.createDecoder(mxf.firstFrameHeader);
         if (decoder instanceof Error) {
           yield { type: "error", message: decoder.message, detail: decoder };
         } else {
           try {
-            yield this.headerLogEvent(mxf.packets[0].header);
-            const decodeInputs = packets.map((packet, index): PacketDecodeInput => ({
-              header: packet.header,
-              bytes: packet.bytes,
-              frameIndex: this.startFrame + index,
-              timing: timingForEditRate(this.startFrame + index, mxf.editRate)
-            }));
+            yield this.headerLogEvent(mxf.firstFrameHeader);
+            const decodeInputs: PacketDecodeInput[] = [];
+            for (const [index, packet] of packets.entries()) {
+              const bytes = await mxf.demuxer.readPacket(packet);
+              const header = parseDnxFrameHeader(bytes);
+              if (!header) {
+                throw new Error(`MXF DNx packet ${packet.index} does not contain a valid frame header.`);
+              }
+              decodeInputs.push({
+                header,
+                bytes,
+                frameIndex: this.startFrame + index,
+                timing: timingForEditRate(this.startFrame + index, mxf.editRate)
+              });
+            }
             for await (const decoded of this.decodePacketSequence(decoder, decodeInputs)) {
               yield decoded.event;
               if (decoded.ok) {

@@ -1,6 +1,6 @@
 export interface MxfSource {
   readonly size: number;
-  read(offset: number, length: number): Promise<Uint8Array>;
+  read(offset: number, length: number, options?: { signal?: AbortSignal }): Promise<Uint8Array>;
 }
 
 export type MxfSourceInput = MxfSource | Uint8Array | ArrayBuffer | Blob;
@@ -14,7 +14,8 @@ export class MxfBufferSource implements MxfSource {
     this.size = this.bytes.byteLength;
   }
 
-  async read(offset: number, length: number): Promise<Uint8Array> {
+  async read(offset: number, length: number, options: { signal?: AbortSignal } = {}): Promise<Uint8Array> {
+    throwIfAborted(options.signal);
     validateRange(offset, length, this.size);
     return this.bytes.subarray(offset, offset + length);
   }
@@ -27,9 +28,29 @@ export class MxfBlobSource implements MxfSource {
     this.size = blob.size;
   }
 
-  async read(offset: number, length: number): Promise<Uint8Array> {
+  async read(offset: number, length: number, options: { signal?: AbortSignal } = {}): Promise<Uint8Array> {
+    throwIfAborted(options.signal);
     validateRange(offset, length, this.size);
-    return new Uint8Array(await this.blob.slice(offset, offset + length).arrayBuffer());
+    const bytes = new Uint8Array(await this.blob.slice(offset, offset + length).arrayBuffer());
+    throwIfAborted(options.signal);
+    return bytes;
+  }
+}
+
+export class MxfCountingSource implements MxfSource {
+  readonly size: number;
+  bytesRead = 0;
+
+  constructor(private readonly source: MxfSource) {
+    this.size = source.size;
+  }
+
+  async read(offset: number, length: number, options: { signal?: AbortSignal } = {}): Promise<Uint8Array> {
+    throwIfAborted(options.signal);
+    const bytes = await this.source.read(offset, length, options);
+    throwIfAborted(options.signal);
+    this.bytesRead += bytes.byteLength;
+    return bytes;
   }
 }
 
@@ -58,5 +79,11 @@ function isMxfSource(input: MxfSourceInput): input is MxfSource {
 function validateRange(offset: number, length: number, size: number): void {
   if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || offset + length > size) {
     throw new RangeError(`MXF source range ${offset}+${length} is outside 0-${size}.`);
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException("The MXF operation was aborted.", "AbortError");
   }
 }

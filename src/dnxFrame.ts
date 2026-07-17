@@ -58,6 +58,20 @@ export interface DnxFrameHeader {
   unsupportedReasons: readonly string[];
 }
 
+export type DnxScanType =
+  | "progressive"
+  | "interlaced-top-field-first"
+  | "interlaced-bottom-field-first";
+
+export interface DnxFrameMetadata {
+  pixelAspectRatio: { num: number; den: number };
+  colorPrimaries: number;
+  colorTransfer: number;
+  colorMatrix: number;
+  colorRangeFull: false;
+  scanType: DnxScanType;
+}
+
 export interface DnxFramePacket {
   offset: number;
   bytes: Uint8Array;
@@ -95,7 +109,10 @@ export function getDnxCidEntry(cidValue: number): DnxCidEntry | null {
   return DNX_CID_TABLE.find((entry) => entry.cid === cidValue) ?? null;
 }
 
-export function parseDnxFrameHeader(packet: Uint8Array): DnxFrameHeader | null {
+export function parseDnxFrameHeader(
+  packet: Uint8Array,
+  options: { declaredPacketLength?: number } = {}
+): DnxFrameHeader | null {
   if (packet.length < 0x280) {
     return null;
   }
@@ -140,7 +157,7 @@ export function parseDnxFrameHeader(packet: Uint8Array): DnxFrameHeader | null {
     lowLatencyAlpha,
     macroblockHeight,
     mbaff,
-    packetLength: packet.length,
+    packetLength: options.declaredPacketLength ?? packet.length,
     pixelFormat,
     width
   });
@@ -227,6 +244,19 @@ export function dnxColorSpaceForHeader(header: DnxFrameHeader): DecodeColorSpace
     transfer: isBt2020 ? "unspecified" : header.colorSpace === "unspecified" ? "unspecified" : "bt709",
     matrix: header.colorSpace,
     fullRange: false
+  };
+}
+
+export function dnxFrameMetadataForHeader(header: DnxFrameHeader): DnxFrameMetadata {
+  const unspecified = header.colorSpace === "unspecified";
+  const bt2020 = header.colorSpace === "bt2020-ncl" || header.colorSpace === "bt2020-cl";
+  return {
+    pixelAspectRatio: { num: 1, den: 1 },
+    colorPrimaries: unspecified ? 2 : bt2020 ? 9 : 1,
+    colorTransfer: unspecified || bt2020 ? 2 : 1,
+    colorMatrix: unspecified ? 2 : header.colorSpace === "bt2020-ncl" ? 9 : header.colorSpace === "bt2020-cl" ? 10 : 1,
+    colorRangeFull: false,
+    scanType: header.interlaced ? "interlaced-top-field-first" : "progressive"
   };
 }
 

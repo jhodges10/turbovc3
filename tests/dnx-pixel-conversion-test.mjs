@@ -7,8 +7,7 @@ import { build } from "esbuild";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const module = await loadConversionModule();
 
-for (const bytesPerSample of [1, 2]) {
-  const suffix = bytesPerSample === 1 ? "8" : "10";
+for (const [suffix, bytesPerSample] of [["8", 1], ["10", 2], ["12", 2]]) {
   const sourceFormat = `yuv422p${suffix}`;
   const source = makeLayout(bytesPerSample);
 
@@ -33,6 +32,7 @@ assert.equal(module.selectDnxOutputFormat("yuv422p10", ["yuv420p8", "yuv420p10"]
 assert.equal(module.selectDnxOutputFormat("yuv422p10", ["yuv420p8"]), null);
 assert.equal(module.selectDnxOutputFormat("gbrp10", ["yuv444p10"]), "yuv444p10");
 assert.equal(module.selectDnxOutputFormat("yuv422p12", ["yuv444p12"]), "yuv444p12");
+assert.equal(module.selectDnxOutputFormat("yuv422p12", ["yuv420p12"]), "yuv420p12");
 assert.equal(module.selectDnxOutputFormat("gbrp12", ["yuv444p12"]), "yuv444p12");
 
 for (const [rgb, expected] of [

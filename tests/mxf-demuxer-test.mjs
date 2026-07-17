@@ -11,6 +11,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const module = await loadMxfModule();
 
 await testSyntheticKlv(module);
+await testLazyDnxAdapter(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testFixture(module, "samples/wip_gallery_page_1920x1080_60fps.mxf", {
   width: 1920,
   height: 1080,
@@ -42,6 +43,66 @@ await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
 });
 
 console.log("MXF demuxer contracts passed.");
+
+async function testLazyDnxAdapter(module, relativePath) {
+  const fixturePath = path.join(repoRoot, relativePath);
+  const bytes = new Uint8Array(await readFile(fixturePath));
+  let bytesRead = 0;
+  const source = {
+    size: bytes.length,
+    async read(offset, length) {
+      bytesRead += length;
+      return bytes.subarray(offset, offset + length);
+    }
+  };
+  const progress = [];
+  const result = await module.demuxDnxMxf(source, {
+    onProgress(value) {
+      progress.push(value);
+    }
+  });
+  assert.ok(result);
+  assert.equal(result.packets.length, 1);
+  assert.equal(result.firstFrameHeader.profile, "dnxhr_lb");
+  assert.equal("bytes" in result.packets[0], false);
+  assert.equal(result.packets[0].byteLength > 0, true);
+  const bytesReadAfterOpen = bytesRead;
+  assert.equal(bytesReadAfterOpen < result.packets[0].byteLength, true);
+  assert.equal(result.demuxer.bytesRead, bytesReadAfterOpen);
+  assert.equal(progress.length > 1, true);
+  assert.equal(progress[0].offset, 0);
+  assert.equal(progress.every((value) => value.totalBytes === bytes.length), true);
+  assert.equal(progress.every((value, index) => index === 0 || value.offset >= progress[index - 1].offset), true);
+  assert.deepEqual(
+    Array.from((await result.demuxer.readPacket(result.packets[0])).subarray(0, 6)),
+    [0, 0, 2, 128, 3, 1]
+  );
+  assert.equal(bytesRead - bytesReadAfterOpen, result.packets[0].byteLength);
+
+  const blobResult = await module.demuxDnxMxf(new Blob([bytes]));
+  assert.ok(blobResult);
+  await assert.rejects(
+    module.MxfDemuxer.open(bytes, { limits: { maxTracks: 1 } }),
+    /tracks exceed the configured limit of 1/
+  );
+  await assert.rejects(
+    module.MxfDemuxer.open(bytes, { limits: { maxMetadataValueBytes: 1 } }),
+    /metadata KLV.*exceeds the 1-byte limit/
+  );
+  await assert.rejects(
+    module.MxfDemuxer.open(bytes, { limits: { maxWidth: 100 } }),
+    /descriptor dimensions.*exceed configured limits/
+  );
+  await assert.rejects(
+    module.MxfDemuxer.open(bytes, { limits: { maxTracks: 0 } }),
+    /maxTracks must be a positive safe integer/
+  );
+
+  await assert.rejects(
+    module.MxfDemuxer.open(new Uint8Array(128), { limits: { maxResyncBytes: 32 } }),
+    /resynchronization exceeded the 32-byte limit/
+  );
+}
 
 async function testFixture(module, relativePath, expected) {
   const fixturePath = path.join(repoRoot, relativePath);
@@ -176,9 +237,17 @@ async function testSyntheticKlv(module) {
 }
 
 async function loadMxfModule() {
-  const packageRoot = path.join(repoRoot, "src/mxf");
+  const mxfModule = JSON.stringify(path.join(repoRoot, "src/mxf/index.ts"));
+  const dnxMxfModule = JSON.stringify(path.join(repoRoot, "src/dnxMxf.ts"));
   const result = await build({
-    entryPoints: [path.join(packageRoot, "index.ts")],
+    stdin: {
+      contents: `
+        export * from ${mxfModule};
+        export * from ${dnxMxfModule};
+      `,
+      resolveDir: repoRoot,
+      sourcefile: "mxf-demux-test-entry.ts"
+    },
     bundle: true,
     format: "esm",
     platform: "node",

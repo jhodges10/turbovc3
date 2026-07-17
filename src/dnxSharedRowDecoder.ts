@@ -27,6 +27,7 @@ export class DnxSharedRowDecoder {
   private nextRequestId = 1;
   private queueSize = 0;
   private closed = false;
+  private closePromise: Promise<void> | null = null;
   private tail: Promise<void> = Promise.resolve();
   private dequeuedResolve: (() => void) | null = null;
   private dequeuedPromise = new Promise<void>((resolve) => {
@@ -85,8 +86,20 @@ export class DnxSharedRowDecoder {
       });
   }
 
-  destroy(): void {
+  async close(): Promise<void> {
     if (this.closed) {
+      return this.closePromise ?? Promise.resolve();
+    }
+    this.closed = true;
+    this.closePromise = this.tail.then(() => {
+      this.terminateWorkers();
+    });
+    return this.closePromise;
+  }
+
+  destroy(): void {
+    if (this.closed && this.pendingRows.size === 0) {
+      this.terminateWorkers();
       return;
     }
     this.closed = true;
@@ -95,25 +108,12 @@ export class DnxSharedRowDecoder {
       pending.reject(error);
     }
     this.pendingRows.clear();
-    for (const slot of this.slots) {
-      const request: DnxSharedRowWorkerRequest = { type: "close" };
-      try {
-        slot.worker.postMessage(request);
-      } catch {
-        // An initialization failure can leave the worker's message port
-        // disconnected. It still needs to be terminated along with its peers.
-      } finally {
-        slot.worker.terminate();
-      }
-    }
+    this.terminateWorkers();
     this.queueSize = 0;
     this.signalDequeued();
   }
 
   private async decodeNow(packet: Uint8Array, header: DnxFrameHeader): Promise<DnxFrameLayout> {
-    if (this.closed) {
-      throw new Error("DNx shared row decoder is closed.");
-    }
     const availableSlots = this.slots.filter((slot) => !slot.failed);
     if (availableSlots.length === 0) {
       throw new Error("No DNx shared row workers are available.");
@@ -217,6 +217,19 @@ export class DnxSharedRowDecoder {
     this.dequeuedPromise = new Promise<void>((resolve) => {
       this.dequeuedResolve = resolve;
     });
+  }
+
+  private terminateWorkers(): void {
+    for (const slot of this.slots) {
+      const request: DnxSharedRowWorkerRequest = { type: "close" };
+      try {
+        slot.worker.postMessage(request);
+      } catch {
+        // A failed worker may already have terminated.
+      } finally {
+        slot.worker.terminate();
+      }
+    }
   }
 }
 

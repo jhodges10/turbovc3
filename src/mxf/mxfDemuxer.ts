@@ -1,5 +1,5 @@
 import { hex, readI64BE, readU16BE, readU32BE, readU64BE, safeNumber, signedByte, utf16Be } from "./mxfBinary.js";
-import { toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource.js";
+import { MxfCountingSource, toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource.js";
 import type {
   MxfDemuxResult,
   MxfDescriptor,
@@ -26,7 +26,6 @@ const INDEX_TABLE_KEY = "060e2b34025301010d01020101100100";
 const GENERIC_ESSENCE_PREFIX = "060e2b34010201010d010301";
 const AVID_ESSENCE_PREFIX = "060e2b34010201010e040301";
 const CANOPUS_ESSENCE_PREFIX = "060e2b340102010a0e0f0301";
-const MAX_METADATA_VALUE_BYTES = 64 * 1024 * 1024;
 const RESYNC_CHUNK_BYTES = 64 * 1024;
 
 const METADATA_TYPES = new Map<string, string>([
@@ -53,6 +52,39 @@ const METADATA_TYPES = new Map<string, string>([
 
 export interface MxfDemuxOptions {
   signal?: AbortSignal;
+  onProgress?(progress: MxfDemuxProgress): void;
+  limits?: Partial<MxfDemuxLimits>;
+}
+
+export interface MxfDemuxLimits {
+  maxMetadataValueBytes: number;
+  maxMetadataSets: number;
+  maxKlvPackets: number;
+  maxTracks: number;
+  maxPackets: number;
+  maxResyncBytes: number;
+  maxWidth: number;
+  maxHeight: number;
+  maxFramePixels: number;
+}
+
+const DEFAULT_LIMITS: MxfDemuxLimits = {
+  maxMetadataValueBytes: 64 * 1024 * 1024,
+  maxMetadataSets: 100_000,
+  maxKlvPackets: 2_000_000,
+  maxTracks: 1_024,
+  maxPackets: 2_000_000,
+  maxResyncBytes: 16 * 1024 * 1024,
+  maxWidth: 16_384,
+  maxHeight: 16_384,
+  maxFramePixels: 268_435_456
+};
+
+export interface MxfDemuxProgress {
+  phase: "indexing";
+  offset: number;
+  totalBytes: number;
+  bytesRead: number;
 }
 
 export class MxfDemuxer {
@@ -63,7 +95,7 @@ export class MxfDemuxer {
   }
 
   static async open(input: MxfSourceInput, options: MxfDemuxOptions = {}): Promise<MxfDemuxer> {
-    const source = toMxfSource(input);
+    const source = new MxfCountingSource(toMxfSource(input));
     return new MxfDemuxer(await demuxMxfSource(source, options));
   }
 
@@ -80,16 +112,21 @@ export class MxfDemuxer {
     return this.result.packets.filter((packet) => packet.track.number === trackNumber);
   }
 
-  async readPacket(packet: MxfPacket): Promise<Uint8Array> {
-    return this.result.source.read(packet.byteOffset, packet.byteLength);
+  get bytesRead(): number {
+    return this.result.source instanceof MxfCountingSource ? this.result.source.bytesRead : 0;
+  }
+
+  async readPacket(packet: MxfPacket, options: { signal?: AbortSignal } = {}): Promise<Uint8Array> {
+    return this.result.source.read(packet.byteOffset, packet.byteLength, options);
   }
 }
 
 export async function demuxMxf(input: MxfSourceInput, options: MxfDemuxOptions = {}): Promise<MxfDemuxResult> {
-  return demuxMxfSource(toMxfSource(input), options);
+  return demuxMxfSource(new MxfCountingSource(toMxfSource(input)), options);
 }
 
 async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Promise<MxfDemuxResult> {
+  const limits = resolveLimits(options.limits);
   const partitions: MxfPartition[] = [];
   const klvPackets: MxfKlvPacket[] = [];
   const primer = new Map<number, string>();
@@ -100,19 +137,22 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
   let operationalPattern: string | null = null;
   let currentBodySid = 0;
   let offset = 0;
+  reportProgress(options, source, offset);
 
   while (offset + 17 <= source.size) {
     throwIfAborted(options.signal);
     const klv = await readKlvAt(source, offset);
     if (!klv) {
-      const next = await findNextKlv(source, offset + 1);
+      const next = await findNextKlv(source, offset + 1, limits.maxResyncBytes);
       if (next === null) {
         break;
       }
       offset = next;
+      reportProgress(options, source, offset);
       continue;
     }
     klvPackets.push(klv);
+    enforceCount("KLV packets", klvPackets.length, limits.maxKlvPackets);
 
     if (isPartitionKey(klv)) {
       const partition = await parsePartition(source, klv);
@@ -120,7 +160,7 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
       currentBodySid = partition.bodySid;
       operationalPattern ??= partition.operationalPattern;
     } else if (klv.keyHex === PRIMER_KEY) {
-      for (const [tag, propertyUl] of await parsePrimer(source, klv)) {
+      for (const [tag, propertyUl] of await parsePrimer(source, klv, limits.maxMetadataValueBytes)) {
         primer.set(tag, propertyUl);
       }
     } else if (isEssenceKey(klv.keyHex)) {
@@ -137,12 +177,13 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
         klv
       });
     } else if (klv.keyHex === RANDOM_INDEX_KEY) {
-      randomIndex = await parseRandomIndex(source, klv);
+      randomIndex = await parseRandomIndex(source, klv, limits.maxMetadataValueBytes);
     } else {
       const metadataType = METADATA_TYPES.get(klv.keyHex);
       if (metadataType) {
-        const set = await parseMetadataSet(source, klv, metadataType, primer);
+        const set = await parseMetadataSet(source, klv, metadataType, primer, limits.maxMetadataValueBytes);
         metadataSets.push(set);
+        enforceCount("metadata sets", metadataSets.length, limits.maxMetadataSets);
         if (klv.keyHex === INDEX_TABLE_KEY) {
           indexTableSegments.push(parseIndexTable(set));
         }
@@ -150,13 +191,19 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     }
 
     offset = klv.nextOffset;
+    reportProgress(options, source, offset);
   }
 
   const descriptors = metadataSets
     .filter((set) => set.type.endsWith("Descriptor"))
     .map(parseDescriptor);
+  for (const descriptor of descriptors) {
+    enforceDimensions(descriptor, limits);
+  }
   const tracks = buildTracks(metadataSets, descriptors, essenceElements);
+  enforceCount("tracks", tracks.length, limits.maxTracks);
   const packets = buildPackets(tracks, essenceElements, indexTableSegments);
+  enforceCount("packets", packets.length, limits.maxPackets);
   for (const track of tracks) {
     track.packetCount = packets.filter((packet) => packet.track.number === track.number).length;
   }
@@ -175,6 +222,15 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     randomIndex,
     packets
   };
+}
+
+function reportProgress(options: MxfDemuxOptions, source: MxfSource, offset: number): void {
+  options.onProgress?.({
+    phase: "indexing",
+    offset: Math.min(offset, source.size),
+    totalBytes: source.size,
+    bytesRead: source instanceof MxfCountingSource ? source.bytesRead : 0
+  });
 }
 
 async function readKlvAt(source: MxfSource, offset: number): Promise<MxfKlvPacket | null> {
@@ -216,10 +272,11 @@ async function readKlvAt(source: MxfSource, offset: number): Promise<MxfKlvPacke
   };
 }
 
-async function findNextKlv(source: MxfSource, start: number): Promise<number | null> {
+async function findNextKlv(source: MxfSource, start: number, maxResyncBytes: number): Promise<number | null> {
   let offset = start;
-  while (offset + KLV_PREFIX.length <= source.size) {
-    const length = Math.min(RESYNC_CHUNK_BYTES, source.size - offset);
+  const limit = Math.min(source.size, start + maxResyncBytes);
+  while (offset + KLV_PREFIX.length <= limit) {
+    const length = Math.min(RESYNC_CHUNK_BYTES, limit - offset);
     const bytes = await source.read(offset, length);
     for (let index = 0; index <= bytes.length - KLV_PREFIX.length; index += 1) {
       if (matchesPrefix(bytes, index, KLV_PREFIX)) {
@@ -230,6 +287,9 @@ async function findNextKlv(source: MxfSource, start: number): Promise<number | n
       break;
     }
     offset += length - (KLV_PREFIX.length - 1);
+  }
+  if (limit < source.size) {
+    throw new Error(`MXF resynchronization exceeded the ${maxResyncBytes}-byte limit at offset ${start}.`);
   }
   return null;
 }
@@ -270,9 +330,13 @@ async function parsePartition(source: MxfSource, klv: MxfKlvPacket): Promise<Mxf
   };
 }
 
-async function parsePrimer(source: MxfSource, klv: MxfKlvPacket): Promise<Map<number, string>> {
+async function parsePrimer(
+  source: MxfSource,
+  klv: MxfKlvPacket,
+  maxMetadataValueBytes: number
+): Promise<Map<number, string>> {
   const result = new Map<number, string>();
-  const bytes = await readMetadataValue(source, klv);
+  const bytes = await readMetadataValue(source, klv, maxMetadataValueBytes);
   if (bytes.length < 8) {
     return result;
   }
@@ -292,9 +356,10 @@ async function parseMetadataSet(
   source: MxfSource,
   klv: MxfKlvPacket,
   type: string,
-  primer: ReadonlyMap<number, string>
+  primer: ReadonlyMap<number, string>,
+  maxMetadataValueBytes: number
 ): Promise<MxfMetadataSet> {
-  const bytes = await readMetadataValue(source, klv);
+  const bytes = await readMetadataValue(source, klv, maxMetadataValueBytes);
   const items: MxfLocalSetItem[] = [];
   let offset = 0;
   while (offset + 4 <= bytes.length) {
@@ -518,8 +583,12 @@ function parseIndexTable(set: MxfMetadataSet): MxfIndexTableSegment {
   };
 }
 
-async function parseRandomIndex(source: MxfSource, klv: MxfKlvPacket): Promise<MxfRandomIndexEntry[]> {
-  const bytes = await readMetadataValue(source, klv);
+async function parseRandomIndex(
+  source: MxfSource,
+  klv: MxfKlvPacket,
+  maxMetadataValueBytes: number
+): Promise<MxfRandomIndexEntry[]> {
+  const bytes = await readMetadataValue(source, klv, maxMetadataValueBytes);
   const entries: MxfRandomIndexEntry[] = [];
   for (let offset = 0; offset + 12 <= bytes.length - 4; offset += 12) {
     entries.push({
@@ -530,9 +599,13 @@ async function parseRandomIndex(source: MxfSource, klv: MxfKlvPacket): Promise<M
   return entries;
 }
 
-async function readMetadataValue(source: MxfSource, klv: MxfKlvPacket): Promise<Uint8Array> {
-  if (klv.valueLength > MAX_METADATA_VALUE_BYTES) {
-    throw new Error(`MXF metadata KLV at ${klv.offset} exceeds ${MAX_METADATA_VALUE_BYTES} bytes.`);
+async function readMetadataValue(
+  source: MxfSource,
+  klv: MxfKlvPacket,
+  maxMetadataValueBytes: number
+): Promise<Uint8Array> {
+  if (klv.valueLength > maxMetadataValueBytes) {
+    throw new Error(`MXF metadata KLV at ${klv.offset} exceeds the ${maxMetadataValueBytes}-byte limit.`);
   }
   return source.read(klv.valueOffset, klv.valueLength);
 }
@@ -622,5 +695,32 @@ function groupBy<T, K>(values: readonly T[], keyFor: (value: T) => K): Map<K, T[
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
     throw signal.reason ?? new DOMException("MXF demux was aborted.", "AbortError");
+  }
+}
+
+function resolveLimits(input: Partial<MxfDemuxLimits> | undefined): MxfDemuxLimits {
+  const limits = { ...DEFAULT_LIMITS, ...input };
+  for (const [name, value] of Object.entries(limits)) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new RangeError(`MXF limit ${name} must be a positive safe integer.`);
+    }
+  }
+  return limits;
+}
+
+function enforceCount(label: string, actual: number, maximum: number): void {
+  if (actual > maximum) {
+    throw new Error(`MXF ${label} exceed the configured limit of ${maximum}.`);
+  }
+}
+
+function enforceDimensions(descriptor: MxfDescriptor, limits: MxfDemuxLimits): void {
+  const width = descriptor.width ?? 0;
+  const height = descriptor.height ?? 0;
+  if (width > limits.maxWidth || height > limits.maxHeight || width * height > limits.maxFramePixels) {
+    throw new Error(
+      `MXF descriptor dimensions ${width}x${height} exceed configured limits ` +
+      `${limits.maxWidth}x${limits.maxHeight}/${limits.maxFramePixels} pixels.`
+    );
   }
 }
