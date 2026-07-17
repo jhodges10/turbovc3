@@ -12,6 +12,7 @@ const module = await loadMxfModule();
 
 await testSyntheticKlv(module);
 await testSyntheticMalformedKlv(module);
+testIndexSegments(module);
 testTimecodeFormatting(module);
 await testLazyDnxAdapter(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testStructuralMutations(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
@@ -59,6 +60,70 @@ await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
 await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf");
 
 console.log("MXF demuxer contracts passed.");
+
+function testIndexSegments(module) {
+  const segment = (start, offsets, options = {}) => ({
+    offset: options.offset ?? start,
+    indexEditRate: { numerator: 30, denominator: 1 },
+    indexStartPosition: start,
+    indexDuration: options.duration ?? offsets.length,
+    editUnitByteCount: options.editUnitByteCount ?? 0,
+    indexSid: 2,
+    bodySid: options.bodySid ?? 1,
+    entries: offsets.map((streamOffset, index) => ({
+      temporalOffset: 0,
+      keyFrameOffset: 0,
+      flags: index === 0 ? 0x80 : 0,
+      streamOffset
+    }))
+  });
+  const variableSegments = [segment(0, [100, 110]), segment(2, [125, 140])];
+  assert.deepEqual(module.essenceSlices(60, 1, 1, variableSegments), [
+    { offset: 0, length: 10 },
+    { offset: 10, length: 15 },
+    { offset: 25, length: 15 },
+    { offset: 40, length: 20 }
+  ]);
+  assert.equal(module.indexEntryAt(variableSegments, 1, 2)?.streamOffset, 125);
+  assert.equal(module.indexEntryAt(variableSegments, 1, 4), undefined);
+
+  const fixedSegments = [
+    segment(0, [], { duration: 2, editUnitByteCount: 10 }),
+    segment(2, [], { duration: 2, editUnitByteCount: 10 })
+  ];
+  assert.deepEqual(module.essenceSlices(40, 1, 1, fixedSegments), [
+    { offset: 0, length: 10 },
+    { offset: 10, length: 10 },
+    { offset: 20, length: 10 },
+    { offset: 30, length: 10 }
+  ]);
+  assert.throws(
+    () => module.indexEntryAt([segment(0, [0, 10]), segment(1, [10, 20])], 1, 1),
+    /covered by multiple index segments/
+  );
+  assert.throws(
+    () => module.essenceSlices(40, 1, 1, [segment(0, [0, 10]), segment(3, [20, 30])]),
+    /sparse or overlapping variable-byte-count clip index/
+  );
+  assert.throws(
+    () => module.essenceSlices(40, 1, 1, [segment(0, [10, 5])]),
+    /ambiguous clip-wrapped index entry offsets/
+  );
+  assert.throws(
+    () => module.essenceSlices(40, 1, 1, [
+      segment(0, [], { duration: 2, editUnitByteCount: 10 }),
+      segment(2, [], { duration: 2, editUnitByteCount: 12 })
+    ]),
+    /conflicting EditUnitByteCount/
+  );
+  assert.throws(
+    () => module.essenceSlices(40, 1, 1, [
+      segment(0, [], { duration: 2, editUnitByteCount: 10 }),
+      segment(3, [], { duration: 2, editUnitByteCount: 10 })
+    ]),
+    /sparse or overlapping constant-byte-count clip index/
+  );
+}
 
 async function testLazyDnxAdapter(module, relativePath) {
   const fixturePath = path.join(repoRoot, relativePath);
@@ -469,11 +534,13 @@ function findBytes(bytes, needle, start, end) {
 
 async function loadMxfModule() {
   const mxfModule = JSON.stringify(path.join(repoRoot, "src/mxf/index.ts"));
+  const mxfIndexModule = JSON.stringify(path.join(repoRoot, "src/mxf/mxfIndex.ts"));
   const dnxMxfModule = JSON.stringify(path.join(repoRoot, "src/dnxMxf.ts"));
   const result = await build({
     stdin: {
       contents: `
         export * from ${mxfModule};
+        export * from ${mxfIndexModule};
         export * from ${dnxMxfModule};
       `,
       resolveDir: repoRoot,

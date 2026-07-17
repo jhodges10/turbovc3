@@ -152,7 +152,7 @@ Initial performance target:
 
 - [ ] Test multiple body partitions, multiple index table segments, sparse indexes, zero `IndexDuration`, and footer
   metadata updates from real-world authoring tools.
-- [ ] Support variable-byte-count clip wrapping when index entry offsets are present and reject ambiguous layouts
+- [x] Support variable-byte-count clip wrapping when index entry offsets are present and reject ambiguous layouts
   deterministically.
 - [ ] Improve package/sequence/source-clip resolution for files with multiple material packages and source packages.
 - [x] Expose material/source timecode tracks and a stable edit-unit mapping API with ordinary and drop-frame

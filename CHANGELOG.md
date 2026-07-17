@@ -48,6 +48,8 @@ All notable changes to turbovc3 will be documented here.
   reference CID matrix.
 - Mediabunny oldest/latest compatibility CI plus an up-front registration check that names missing shim APIs and
   leaves registration retry-safe after a rejected incompatible version.
+- Multi-segment MXF index resolution and deterministic packet slicing for fully indexed constant- or
+  variable-byte-count clip wrapping.
 
 ### Changed
 
@@ -59,6 +61,7 @@ All notable changes to turbovc3 will be documented here.
 - Truncated packets with valid DNx headers now report `DnxUnexpectedEofError` instead of a capability error.
 - Published worker modules use direct-ESM-compatible `.js` specifiers.
 - Worker failures preserve decoder error categories and include packet-request or shared-row context.
+- Ambiguous MXF clip indexes with gaps, overlaps, conflicting unit sizes, or non-monotonic offsets are rejected.
 
 ## [0.1.0] - 2026-07-10
 

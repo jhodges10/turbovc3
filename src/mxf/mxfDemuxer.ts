@@ -1,5 +1,6 @@
 import { hex, readI64BE, readU16BE, readU32BE, readU64BE, safeNumber, signedByte, utf16Be } from "./mxfBinary.js";
 import { MxfCountingSource, toMxfSource, type MxfSource, type MxfSourceInput } from "./mxfSource.js";
+import { essenceSlices, indexEntryAt } from "./mxfIndex.js";
 import type {
   MxfDemuxResult,
   MxfDescriptor,
@@ -705,18 +706,17 @@ function buildPackets(
       return [];
     }
     const duration = track.editRate.denominator / track.editRate.numerator;
-    const indexSegment = indexes.find((segment) => segment.bodySid === element.bodySid);
-    const editUnitByteCount = indexSegment?.editUnitByteCount ?? 0;
     const slices = essenceSlices(
       element.klv.valueLength,
       elementsPerTrack.get(element.trackNumber) ?? 1,
-      indexSegment
+      element.bodySid,
+      indexes
     );
     const packets: MxfPacket[] = [];
     for (const slice of slices) {
       const index = counters.get(track.number) ?? 0;
       counters.set(track.number, index + 1);
-      const indexEntry = indexSegment?.entries[index - indexSegment.indexStartPosition];
+      const indexEntry = indexEntryAt(indexes, element.bodySid, index);
       packets.push({
         track,
         index,
@@ -732,41 +732,6 @@ function buildPackets(
     }
     return packets;
   });
-}
-
-function essenceSlices(
-  valueLength: number,
-  elementCount: number,
-  indexSegment: MxfIndexTableSegment | undefined
-): Array<{ offset: number; length: number }> {
-  const editUnitByteCount = indexSegment?.editUnitByteCount ?? 0;
-  if (editUnitByteCount > 0 && valueLength >= editUnitByteCount * 2) {
-    const units = Math.min(
-      Math.floor(valueLength / editUnitByteCount),
-      indexSegment?.indexDuration || Number.MAX_SAFE_INTEGER
-    );
-    return Array.from({ length: units }, (_, index) => ({
-      offset: index * editUnitByteCount,
-      length: editUnitByteCount
-    }));
-  }
-
-  const entries = indexSegment?.entries ?? [];
-  if (elementCount === 1 && entries.length > 1) {
-    const firstOffset = entries[0].streamOffset;
-    const offsets = entries.map((entry) => entry.streamOffset - firstOffset);
-    if (
-      offsets[0] === 0 &&
-      offsets.every((offset, index) => offset >= 0 && offset < valueLength && (index === 0 || offset > offsets[index - 1]))
-    ) {
-      return offsets.map((offset, index) => ({
-        offset,
-        length: (offsets[index + 1] ?? valueLength) - offset
-      }));
-    }
-  }
-
-  return [{ offset: 0, length: valueLength }];
 }
 
 function parseIndexTable(set: MxfMetadataSet): MxfIndexTableSegment {
