@@ -269,7 +269,8 @@ REQUIRE_WASM_ASSETS=1 npm run test:package
 ```
 
 FFmpeg 8.x is only required to regenerate committed fixtures or run the full local oracle corpus. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [research/README.md](research/README.md) for codec notes.
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, [compatibility and limits](docs/compatibility.md) for the tested
+runtime/security/provenance contract, and [research/README.md](research/README.md) for codec notes.
 
 ## License and security
 

@@ -41,6 +41,7 @@
     "LICENSE",
     "docs/deployment.md",
     "docs/benchmarks.md",
+    "docs/compatibility.md",
     "dist",
     "wasm/generated/*.wasm"
   ],
@@ -72,6 +73,8 @@
     "test:native:sanitizers": "bash scripts/test-native-sanitizers.sh",
     "test:package": "node tests/package-smoke-test.mjs",
     "test:benchmark": "npm run build && node tests/benchmark-smoke-test.mjs",
+    "test:release-report": "node tests/release-report-test.mjs",
+    "release:report": "node scripts/generate-release-report.mjs",
     "bench:decode": "npm run build && node benchmarks/decode.mjs",
     "example:build": "tsc -p examples/browser/tsconfig.json && node examples/browser/serve.mjs --build-only",
     "example:browser": "node examples/browser/serve.mjs"
