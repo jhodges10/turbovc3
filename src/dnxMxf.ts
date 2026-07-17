@@ -7,7 +7,17 @@ import {
 } from "./mxf/index.js";
 import { parseDnxFrameHeader, type DnxFrameHeader } from "./dnxFrame.js";
 
-export type { MxfDemuxLimits, MxfDemuxProgress } from "./mxf/index.js";
+export { MxfDemuxer } from "./mxf/index.js";
+export type {
+  MxfDemuxLimits,
+  MxfDemuxOptions,
+  MxfDemuxProgress
+} from "./mxf/mxfDemuxer.js";
+export type {
+  MxfSource,
+  MxfSourceInput
+} from "./mxf/mxfSource.js";
+export type * from "./mxf/mxfTypes.js";
 
 export interface DnxMxfEditRate {
   numerator: number;

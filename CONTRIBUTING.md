@@ -20,8 +20,15 @@ The standard workflow requires Node.js 22 or newer:
 npm ci
 npm run check
 npm run build
+npm run api:report
 npm test
 npm run test:package
+```
+
+Run a larger deterministic malformed-input campaign before parser or reconstruction changes:
+
+```sh
+npm run test:fuzz
 ```
 
 The committed fixtures are one-frame synthetic patterns. Their checksums and expected formats live in

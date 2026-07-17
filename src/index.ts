@@ -5,3 +5,11 @@ export * from "./dnxMxf.js";
 export * from "./dnxMediabunny.js";
 export * from "./dnxRandomAccessDecoder.js";
 export * from "./dnxWebGpuRenderer.js";
+export type {
+  DecodeColorSpace,
+  DecodeFrame,
+  DecodePixelFormat,
+  DecodePixelAspectRatio,
+  DecodePlane
+} from "./core/codec.js";
+export type { DnxFrameLayout } from "./dnxReconstruction.js";

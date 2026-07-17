@@ -23,6 +23,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+      - run: npm run api:report
       - run: npm test
       - run: npm run test:package
       - run: npm audit --audit-level=high
