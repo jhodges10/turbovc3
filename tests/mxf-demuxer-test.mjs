@@ -11,6 +11,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const module = await loadMxfModule();
 
 await testSyntheticKlv(module);
+await testSyntheticBodySidTrackIdentity(module);
 await testSyntheticMalformedKlv(module);
 testIndexSegments(module);
 testTimecodeFormatting(module);
@@ -488,6 +489,33 @@ async function testSyntheticMalformedKlv(module) {
     module.demuxMxf(klv(randomIndexKey, outOfRangeRandomIndex)),
     /random index byte offset 10000 is outside/
   );
+}
+
+async function testSyntheticBodySidTrackIdentity(module) {
+  const headerKey = "060e2b34020501010d01020101020400";
+  const bodyKey = "060e2b34020501010d01020101030400";
+  const essenceKey = "060e2b34010201010d01030115010c00";
+  const firstPartition = klv(headerKey, partitionPayload({ bodySid: 1 }));
+  const firstEssence = klv(essenceKey, Uint8Array.from([1, 2, 3, 4]));
+  const bodyOffset = firstPartition.byteLength + firstEssence.byteLength;
+  const secondPartition = klv(bodyKey, partitionPayload({
+    thisPartition: bodyOffset,
+    previousPartition: 0,
+    bodySid: 2
+  }));
+  const secondEssence = klv(essenceKey, Uint8Array.from([5, 6, 7, 8]));
+  const result = await module.demuxMxf(
+    concatBytes(firstPartition, firstEssence, secondPartition, secondEssence)
+  );
+  assert.equal(result.tracks.length, 2);
+  assert.deepEqual(result.tracks.map((track) => [track.numberHex, track.bodySid, track.packetCount]), [
+    ["15010c00", 1, 1],
+    ["15010c00", 2, 1]
+  ]);
+  assert.deepEqual(result.packets.map((packet) => [packet.track.bodySid, packet.index, packet.timestamp]), [
+    [1, 0, 0],
+    [2, 0, 0]
+  ]);
 }
 
 function klv(key, payload) {

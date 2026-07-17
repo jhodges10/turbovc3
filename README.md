@@ -146,7 +146,7 @@ jobs already accepted by the underlying decoder.
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
-| MXF | OP1a and OPAtom DNx essence; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
+| MXF | OP1a and OPAtom DNx essence; BodySID/source-package track identity; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
 Rec. 2020 constant-luminance signaling is preserved in frame metadata but is not rendered or converted to YUV yet:

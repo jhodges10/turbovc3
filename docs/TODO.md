@@ -165,7 +165,9 @@ Initial performance target:
   metadata updates from real-world authoring tools.
 - [x] Support variable-byte-count clip wrapping when index entry offsets are present and reject ambiguous layouts
   deterministically.
-- [ ] Improve package/sequence/source-clip resolution for files with multiple material packages and source packages.
+- [x] Resolve essence tracks by BodySID and source-package EssenceContainerData links so duplicate track numbers and
+  descriptor track IDs in separate source packages remain distinct.
+- [ ] Resolve material-package sequences and SourceClip chains when files contain multiple alternate compositions.
 - [x] Expose material/source timecode tracks and a stable edit-unit mapping API with ordinary and drop-frame
   formatting, origins, duration, edit rates, and 24-hour wrapping.
 - [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.

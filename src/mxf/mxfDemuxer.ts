@@ -217,7 +217,7 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
   const packets = buildPackets(tracks, essenceElements, indexTableSegments);
   enforceCount("packets", packets.length, limits.maxPackets);
   for (const track of tracks) {
-    track.packetCount = packets.filter((packet) => packet.track.number === track.number).length;
+    track.packetCount = packets.filter((packet) => packet.track === track).length;
   }
   for (const entry of randomIndex) {
     if (entry.byteOffset < 0 || entry.byteOffset >= source.size) {
@@ -582,51 +582,89 @@ function buildTracks(
   descriptors: readonly MxfDescriptor[],
   essence: readonly MxfEssenceElement[]
 ): MxfTrack[] {
-  const essenceByTrack = groupBy(essence, (element) => element.trackNumber);
+  const essenceByTrack = groupBy(essence, (element) => trackKey(element.bodySid, element.trackNumber));
   const sequences = new Map(metadataSets.filter((set) => set.type === "Sequence").map((set) => [set.instanceUid, set]));
+  const setsByUid = new Map(
+    metadataSets
+      .filter((set): set is MxfMetadataSet & { instanceUid: string } => set.instanceUid !== null)
+      .map((set) => [set.instanceUid, set])
+  );
+  const sourcePackagesByPackageUid = new Map(
+    metadataSets
+      .filter((set) => set.type === "SourcePackage")
+      .map((set) => [itemHex(set, 0x4401), set])
+      .filter((entry): entry is [string, MxfMetadataSet] => entry[0] !== null)
+  );
+  const bodySidByTrackUid = new Map<string, number>();
+  const descriptorUidsByTrackUid = new Map<string, ReadonlySet<string>>();
+  for (const essenceContainerData of metadataSets.filter((set) => set.type === "EssenceContainerData")) {
+    const packageUid = itemHex(essenceContainerData, 0x2701);
+    const bodySid = itemU32(essenceContainerData, 0x3f07);
+    const sourcePackage = packageUid ? sourcePackagesByPackageUid.get(packageUid) : undefined;
+    if (!sourcePackage || !bodySid) {
+      continue;
+    }
+    const descriptorUids = packageDescriptorUids(sourcePackage, setsByUid);
+    for (const trackUid of itemReferenceArray(sourcePackage, 0x4403)) {
+      bodySidByTrackUid.set(trackUid, bodySid);
+      descriptorUidsByTrackUid.set(trackUid, descriptorUids);
+    }
+  }
   const candidates = metadataSets
     .filter((set) => set.type === "Track" || set.type === "StaticTrack")
-    .map((set): MxfTrack | null => {
+    .flatMap((set): MxfTrack[] => {
       const id = itemU32(set, 0x4801);
       const numberBytes = item(set.items, 0x4804);
       const editRate = itemRational(set, 0x4b01);
       if (id === null || !numberBytes || numberBytes.length < 4 || !editRate) {
-        return null;
+        return [];
       }
       const number = readU32BE(numberBytes, 0);
       const sequenceBytes = item(set.items, 0x4803);
       const sequenceUid = sequenceBytes && sequenceBytes.length >= 16 ? hex(sequenceBytes.subarray(0, 16)) : null;
       const sequence = sequenceUid ? sequences.get(sequenceUid) : null;
-      const elements = essenceByTrack.get(number) ?? [];
-      return {
-        id,
-        number,
-        numberHex: number.toString(16).padStart(8, "0"),
-        kind: kindForEssence(elements[0]),
-        name: itemString(set, 0x4802),
-        editRate,
-        origin: itemI64(set, 0x4b02) ?? 0,
-        duration: sequence ? itemI64(sequence, 0x0202) : null,
-        sequenceUid,
-        descriptor: descriptors.find((descriptor) => descriptor.linkedTrackId === id) ?? null,
-        bodySid: elements[0]?.bodySid ?? null,
-        packetCount: elements.length
-      };
+      const linkedBodySid = set.instanceUid ? bodySidByTrackUid.get(set.instanceUid) : undefined;
+      const matchingGroups = linkedBodySid
+        ? [[trackKey(linkedBodySid, number), essenceByTrack.get(trackKey(linkedBodySid, number)) ?? []] as const]
+        : [...essenceByTrack].filter(([, elements]) => elements[0]?.trackNumber === number);
+      const allowedDescriptorUids = set.instanceUid ? descriptorUidsByTrackUid.get(set.instanceUid) : undefined;
+      const descriptor = descriptors.find((candidate) =>
+        candidate.linkedTrackId === id &&
+        (!allowedDescriptorUids || (candidate.instanceUid !== null && allowedDescriptorUids.has(candidate.instanceUid)))
+      ) ?? null;
+      return matchingGroups
+        .filter(([, elements]) => elements.length > 0)
+        .map(([, elements]) => ({
+          id,
+          number,
+          numberHex: number.toString(16).padStart(8, "0"),
+          kind: kindForEssence(elements[0]),
+          name: itemString(set, 0x4802),
+          editRate,
+          origin: itemI64(set, 0x4b02) ?? 0,
+          duration: sequence ? itemI64(sequence, 0x0202) : null,
+          sequenceUid,
+          descriptor,
+          bodySid: elements[0].bodySid,
+          packetCount: elements.length
+        }));
     })
-    .filter((track): track is MxfTrack => track !== null && track.packetCount > 0);
+    .filter((track) => track.packetCount > 0);
 
-  const byNumber = new Map<number, MxfTrack>();
+  const byTrack = new Map<string, MxfTrack>();
   for (const track of candidates) {
-    const existing = byNumber.get(track.number);
+    const key = trackKey(track.bodySid!, track.number);
+    const existing = byTrack.get(key);
     if (!existing || (track.descriptor && !existing.descriptor)) {
-      byNumber.set(track.number, track);
+      byTrack.set(key, track);
     }
   }
-  for (const [number, elements] of essenceByTrack) {
-    if (byNumber.has(number)) {
+  for (const [key, elements] of essenceByTrack) {
+    if (byTrack.has(key)) {
       continue;
     }
-    byNumber.set(number, {
+    const number = elements[0].trackNumber;
+    byTrack.set(key, {
       id: number,
       number,
       numberHex: number.toString(16).padStart(8, "0"),
@@ -641,7 +679,26 @@ function buildTracks(
       packetCount: elements.length
     });
   }
-  return [...byNumber.values()];
+  return [...byTrack.values()];
+}
+
+function packageDescriptorUids(
+  sourcePackage: MxfMetadataSet,
+  setsByUid: ReadonlyMap<string, MxfMetadataSet>
+): ReadonlySet<string> {
+  const rootUid = itemUid(sourcePackage, 0x4701);
+  if (!rootUid) {
+    return new Set();
+  }
+  const root = setsByUid.get(rootUid);
+  if (root?.type !== "MultipleDescriptor") {
+    return new Set([rootUid]);
+  }
+  return new Set([rootUid, ...itemReferenceArray(root, 0x3f01)]);
+}
+
+function trackKey(bodySid: number, trackNumber: number): string {
+  return `${bodySid}:${trackNumber}`;
 }
 
 function buildTimecodeTracks(metadataSets: readonly MxfMetadataSet[]): MxfTimecodeTrack[] {
@@ -702,28 +759,30 @@ function buildPackets(
   essence: readonly MxfEssenceElement[],
   indexes: readonly MxfIndexTableSegment[]
 ): MxfPacket[] {
-  const tracksByNumber = new Map(tracks.map((track) => [track.number, track]));
-  const elementsPerTrack = new Map<number, number>();
+  const tracksByNumber = new Map(tracks.map((track) => [trackKey(track.bodySid ?? 0, track.number), track]));
+  const elementsPerTrack = new Map<string, number>();
   for (const element of essence) {
-    elementsPerTrack.set(element.trackNumber, (elementsPerTrack.get(element.trackNumber) ?? 0) + 1);
+    const key = trackKey(element.bodySid, element.trackNumber);
+    elementsPerTrack.set(key, (elementsPerTrack.get(key) ?? 0) + 1);
   }
-  const counters = new Map<number, number>();
+  const counters = new Map<string, number>();
   return essence.flatMap((element): MxfPacket[] => {
-    const track = tracksByNumber.get(element.trackNumber);
+    const key = trackKey(element.bodySid, element.trackNumber);
+    const track = tracksByNumber.get(key);
     if (!track) {
       return [];
     }
     const duration = track.editRate.denominator / track.editRate.numerator;
     const slices = essenceSlices(
       element.klv.valueLength,
-      elementsPerTrack.get(element.trackNumber) ?? 1,
+      elementsPerTrack.get(key) ?? 1,
       element.bodySid,
       indexes
     );
     const packets: MxfPacket[] = [];
     for (const slice of slices) {
-      const index = counters.get(track.number) ?? 0;
-      counters.set(track.number, index + 1);
+      const index = counters.get(key) ?? 0;
+      counters.set(key, index + 1);
       const indexEntry = indexEntryAt(indexes, element.bodySid, index);
       packets.push({
         track,
