@@ -65,6 +65,7 @@
     "test:fixtures": "node tests/committed-fixtures-test.mjs",
     "test:extended": "node tests/dnx-oracle-test.mjs --allow-missing",
     "test:browser": "playwright test",
+    "test:runtimes": "deno run --allow-read tests/runtime-worker-smoke.mjs && bun tests/runtime-worker-smoke.mjs",
     "test:native": "node tests/dnx-wasm-kernel-test.mjs && node tests/committed-fixtures-test.mjs --require-native",
     "test:package": "node tests/package-smoke-test.mjs"
   },

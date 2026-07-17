@@ -26,9 +26,8 @@ Remaining parity work is intentionally not marked complete without codec fixture
 - [x] Reuse the serialized shared-row packet buffer and retain a frame-sized shared buffer for each reusable `Frame`,
   with allocation-identity contract coverage.
 - [ ] Replace per-worker WASM instances with a measured shared-runtime design, then prove the throughput improvement.
-- [ ] Complete worker/WASM startup coverage for Chromium, Firefox, Safari, Deno, and Bun. Node packet-worker support
-  now ships through `@jhodges10/turbovc3/node`, and other hosts can inject `DecoderOptions.workerFactory` without
-  mutating globals.
+- [x] Cover worker/backend startup in Chromium, Firefox, WebKit, Node, Deno, and Bun. Node ships through
+  `@jhodges10/turbovc3/node`; Deno and Bun exercise direct ESM plus injected packet workers.
 - [ ] Implement interlaced/MBAFF and alpha/low-latency-alpha decode, rendering, and lifetime contracts.
 - [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
 - [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.

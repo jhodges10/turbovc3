@@ -27,6 +27,8 @@ All notable changes to turbovc3 will be documented here.
   sample-rate/channel metadata and the existing play, pause, seek, and clock contract.
 - A reusable `DnxPlaybackClock`, also exposed as `DnxAudioPlayback.clock`, for synchronizing video presentation to
   the Web Audio timebase.
+- SHA-pinned Deno and Bun CI smoke coverage for direct ESM, TypeScript/native fallback selection, injected packet
+  workers, decode, and teardown.
 
 ### Changed
 
