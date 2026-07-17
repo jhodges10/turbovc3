@@ -39,4 +39,6 @@ FFmpeg output. The external FFmpeg FATE 12-bit DNxHR sample is intentionally opt
 
 Coverage claims distinguish implemented parsing from required oracle evidence. Genuine adaptive MBAFF, alpha,
 low-latency alpha, CID 1256, 12-bit 4:4:4, non-48-kHz MXF PCM, AES3/big-endian audio, and files from additional NLE
-vendors remain explicitly unverified until suitable redistributable fixtures are available.
+vendors remain explicitly unverified until suitable redistributable fixtures are available. The public FFmpeg FATE
+HQX 12-bit sample is not redistributed, but `npm run fixtures:fetch-extended` retrieves it over HTTPS and rejects any
+content whose byte length or SHA-256 differs from the pinned identity.

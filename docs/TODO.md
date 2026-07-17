@@ -132,6 +132,8 @@ Initial performance target:
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
   8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
+- [x] Make FFmpeg's public 12-bit CID 1271 HQX FATE sample reproducibly fetchable with byte-length/SHA-256 pinning
+  and retain its strict TypeScript, native, and Mediabunny extended-oracle path; it is 4:2:2, not the 4:4:4 gap above.
 - [x] Expand committed oracle coverage to progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
 - [x] Commit bit-exact FFmpeg oracles for progressive DNxHD CIDs 1235/1237/1238 and DNxHR LB/SQ/HQ CIDs
   1274/1273/1272,
