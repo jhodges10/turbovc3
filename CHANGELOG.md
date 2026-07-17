@@ -44,6 +44,8 @@ All notable changes to turbovc3 will be documented here.
 - Material/source MXF timecode-track exposure with edit-unit mapping and ordinary/drop-frame SMPTE formatting.
 - A bit-exact 24 fps OP1a fixture covering mono 24-bit PCM playback and non-zero material/source timecode alongside
   the existing 30 fps stereo 16-bit contract.
+- DNxHD CID 1238 scalar/native dispatch and a required bit-exact FFmpeg oracle, completing the FFmpeg 8 progressive
+  reference CID matrix.
 
 ### Changed
 

@@ -139,10 +139,21 @@ jobs already accepted by the underlying decoder.
 | MXF | OP1a and OPAtom DNx essence; PCM packets; material/source timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
+| Profile family | CID coverage |
+| --- | --- |
+| Progressive DNxHD | CIDs 1235, 1237, 1238, 1250–1253, 1258, and 1259 are required FFmpeg oracles |
+| Interlaced DNxHD | CIDs 1241–1244 and FFmpeg's non-MBAFF CID 1260 subset are required oracles |
+| DNxHR | CIDs 1270–1274 are required at FFmpeg-emittable 8/10-bit formats |
+| Implemented, external oracle required | CID 1256 4:4:4 and genuine 12-bit CID 1270/1271 packets |
+
 CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,
 interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. The
 external 12-bit FATE sample remains an opt-in local oracle because FFmpeg 8 cannot produce a genuine 12-bit DNx
 packet. The committed synthetic corpus uses bit-exact muxer output and SHA-256 manifests.
+
+Relative to FFmpeg 8's reference CID table, turbovc3 does not silently omit a listed baseline CID. It explicitly
+rejects unknown CIDs and the still-deferred coding modes signaled inside otherwise known profiles: genuine adaptive
+MBAFF, alpha, and low-latency alpha.
 
 ## Runtime backends
 

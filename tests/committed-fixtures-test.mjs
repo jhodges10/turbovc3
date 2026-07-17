@@ -34,6 +34,8 @@ const requiredFiles = [
   "oracle_dnxhd_1440x1080p30_8bit_cid1259.yuv.gz",
   "oracle_dnxhd_1080p30_8bit_cid1237.mxf",
   "oracle_dnxhd_1080p30_8bit_cid1237.yuv.gz",
+  "oracle_dnxhd_1080p30_8bit_cid1238.mxf",
+  "oracle_dnxhd_1080p30_8bit_cid1238.yuv.gz",
   "oracle_dnxhd_1080p30_10bit_cid1235.mxf",
   "oracle_dnxhd_1080p30_10bit_cid1235.yuv.gz",
   "oracle_dnxhr_lb_1080p30_8bit_cid1274.mov",

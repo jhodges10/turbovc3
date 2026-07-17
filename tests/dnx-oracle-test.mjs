@@ -120,6 +120,19 @@ const supportedFixtures = [
     }
   },
   {
+    name: "dnxhd-1080p30-8bit-cid1238",
+    output: path.join(fixtureDir, "oracle_dnxhd_1080p30_8bit_cid1238.mxf"),
+    vf: "fps=30,scale=1920:1080,format=yuv422p",
+    bitrate: "220M",
+    expected: {
+      cid: 1238,
+      width: 1920,
+      height: 1080,
+      pixelFormat: "yuv422p8",
+      frameCount: frames
+    }
+  },
+  {
     name: "dnxhd-1080p30-10bit-cid1235",
     output: path.join(fixtureDir, "oracle_dnxhd_1080p30_10bit_cid1235.mxf"),
     vf: "fps=30,scale=1920:1080,format=yuv422p10le",

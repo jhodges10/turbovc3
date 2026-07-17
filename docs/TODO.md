@@ -123,7 +123,8 @@ Initial performance target:
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
   8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
 - [x] Expand committed oracle coverage to progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
-- [x] Commit bit-exact FFmpeg oracles for progressive DNxHD CIDs 1235/1237 and DNxHR LB/SQ/HQ CIDs 1274/1273/1272,
+- [x] Commit bit-exact FFmpeg oracles for progressive DNxHD CIDs 1235/1237/1238 and DNxHR LB/SQ/HQ CIDs
+  1274/1273/1272,
   so every progressive profile FFmpeg 8 can emit is required in CI.
 - [ ] Add CID 1256 DNxHD 4:4:4 from an external source; FFmpeg 8 rejects that encoding combination.
 - [x] Verify adaptive color transform selection and channel ordering against paired YUV/GBR FFmpeg oracles across
@@ -132,7 +133,8 @@ Initial performance target:
   codec metadata rather than the guarded extension shim.
 - [x] Reject unknown CIDs before decode even when their header dimensions, packet size, and pixel format otherwise
   resemble a supported VC-3 frame.
-- [ ] Document any valid VC-3 profiles intentionally excluded from browser decode.
+- [x] Document the complete FFmpeg 8 reference CID matrix and distinguish implemented-but-external-oracle profiles
+  from explicitly rejected adaptive-MBAFF, alpha, low-latency-alpha, and unknown-CID inputs.
 
 ## P1: Color and Frame Interoperability
 
