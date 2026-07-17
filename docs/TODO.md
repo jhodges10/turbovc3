@@ -110,7 +110,8 @@ Initial performance target:
   timecode.
 - [ ] Add real OP1a PCM fixtures at sample rates other than 48 kHz; FFmpeg 8's MXF muxer rejects them, so this needs
   another redistributable authoring source.
-- [ ] Keep unsupported compressed MXF audio explicit; do not silently treat arbitrary sound essence as PCM.
+- [x] Keep unsupported compressed or otherwise incompatible MXF audio explicit with a `DnxNotSupportedError` that
+  reports track IDs, essence ULs, bit depths, sample rates, and channel counts.
 
 ## P1: Codec Coverage
 

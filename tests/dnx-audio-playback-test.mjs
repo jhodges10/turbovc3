@@ -117,6 +117,17 @@ assert.equal(started[mono24StartIndex].source.buffer.getChannelData(0)[0], 0);
 assert.equal(Math.abs(started[mono24StartIndex].source.buffer.getChannelData(0)[1]) > 0, true);
 await mono24Playback.close();
 
+const unsupportedDemuxer = await module.MxfDemuxer.open(bytes);
+const unsupportedTrack = unsupportedDemuxer.tracks.find((track) => track.kind === "audio");
+assert.ok(unsupportedTrack?.descriptor);
+unsupportedTrack.descriptor.essenceContainerUl = "060e2b34040101010d01030102050000";
+await assert.rejects(
+  module.DnxAudioPlayback.createFromMxf(unsupportedDemuxer, { audioContext: context }),
+  (error) =>
+    error?.name === "DnxNotSupportedError" &&
+    /MXF audio tracks are present.*track 3.*16-bit.*48000 Hz.*2 channels/.test(error.message)
+);
+
 const noAudio = await module.DnxAudioPlayback.createFromMxf(
   new Uint8Array(await readFile(path.join(repoRoot, "tests/fixtures/dnxhr-lb-opatom.mxf"))),
   { audioContext: context }
@@ -133,8 +144,14 @@ async function waitFor(predicate) {
 }
 
 async function loadModule() {
+  const audioModule = JSON.stringify(path.join(repoRoot, "src/dnxAudioPlayback.ts"));
+  const mxfModule = JSON.stringify(path.join(repoRoot, "src/mxf/mxfDemuxer.ts"));
   const result = await build({
-    entryPoints: [path.join(repoRoot, "src/dnxAudioPlayback.ts")],
+    stdin: {
+      contents: `export * from ${audioModule}; export { MxfDemuxer } from ${mxfModule};`,
+      resolveDir: repoRoot,
+      sourcefile: "dnx-audio-playback-test-entry.ts"
+    },
     bundle: true,
     format: "esm",
     platform: "node",
