@@ -15,6 +15,7 @@ const calls = {
   unconfigured: false,
   deviceDestroyed: false
 };
+let resolveDeviceLost;
 
 async function main() {
   const module = await loadRenderer();
@@ -34,8 +35,15 @@ async function main() {
         return fakeContext;
       }
     };
-    const renderer = await module.DnxWebGpuRenderer.create(canvas);
+    const deviceLosses = [];
+    const renderer = await module.DnxWebGpuRenderer.create(canvas, {
+      onDeviceLost(error) {
+        deviceLosses.push(error);
+      }
+    });
     assert.ok(renderer);
+    assert.equal(renderer.isDestroyed, false);
+    assert.equal(renderer.isDeviceLost, false);
 
     const frame420 = makeFrame("yuv420p8", 8, 4, 2);
     const frame422 = makeFrame("yuv422p10", 8, 4);
@@ -101,7 +109,16 @@ async function main() {
     assert.equal(canvas.height, 4);
     assert.equal(calls.textures.slice(0, 3).every((texture) => texture.destroyed), true);
 
+    resolveDeviceLost({ reason: "unknown", message: "simulated reset" });
+    await Promise.resolve();
+    assert.equal(renderer.isDeviceLost, true);
+    assert.equal(deviceLosses.length, 1);
+    assert.match(deviceLosses[0].message, /simulated reset/);
+    assert.throws(() => renderer.render(frame420), /device is lost/);
+
     renderer.destroy();
+    renderer.destroy();
+    assert.equal(renderer.isDestroyed, true);
     assert.equal(calls.textures.every((texture) => texture.destroyed), true);
     assert.equal(calls.unconfigured, true);
     assert.equal(calls.deviceDestroyed, true);
@@ -156,6 +173,9 @@ const fakeQueue = {
 };
 
 const fakeDevice = {
+  lost: new Promise((resolve) => {
+    resolveDeviceLost = resolve;
+  }),
   queue: fakeQueue,
   createBindGroup(descriptor) {
     return { descriptor };

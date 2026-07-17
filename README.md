@@ -181,6 +181,7 @@ Use `copyLayout()`, `allocationSize()`, and `copyTo()` to copy coded plane rows 
 offset/strided destination storage; layouts are range-checked and may not overlap.
 `DnxCanvasRenderer` is the portable Canvas2D fallback; `DnxWebGpuRenderer.create()` returns `null` when WebGPU is
 unavailable so applications can select the fallback explicitly.
+Both renderers expose `isDestroyed`; the WebGPU renderer also exposes `isDeviceLost` and an `onDeviceLost` callback.
 
 ## Develop
 

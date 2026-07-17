@@ -27,6 +27,7 @@ interface GpuAdapter {
 
 interface GpuDevice {
   queue: GpuQueue;
+  lost?: Promise<{ reason?: string; message?: string }>;
   createBindGroup(descriptor: unknown): GpuBindGroup;
   createBuffer(descriptor: unknown): GpuBuffer;
   createCommandEncoder(): GpuCommandEncoder;
@@ -85,23 +86,42 @@ interface TextureSet {
   bindGroup: GpuBindGroup;
 }
 
+export interface DnxWebGpuRendererOptions {
+  onDeviceLost?: (error: Error) => void;
+}
+
 export class DnxWebGpuRenderer {
   private textures: TextureSet | null = null;
   private destroyed = false;
+  private deviceLost = false;
 
   private constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly context: GpuCanvasContext,
     private readonly device: GpuDevice,
     private readonly pipeline: GpuRenderPipeline,
-    private readonly paramsBuffer: GpuBuffer
-  ) {}
+    private readonly paramsBuffer: GpuBuffer,
+    onDeviceLost: (error: Error) => void
+  ) {
+    void device.lost?.then((info) => {
+      if (this.destroyed) {
+        return;
+      }
+      this.deviceLost = true;
+      onDeviceLost(new Error(
+        `DNx WebGPU device was lost${info.message ? `: ${info.message}` : "."}`
+      ));
+    });
+  }
 
   static supports(frame: DecodeFrame): boolean {
     return isSupportedFrame(frame);
   }
 
-  static async create(canvas: HTMLCanvasElement): Promise<DnxWebGpuRenderer | null> {
+  static async create(
+    canvas: HTMLCanvasElement,
+    options: DnxWebGpuRendererOptions = {}
+  ): Promise<DnxWebGpuRenderer | null> {
     if (typeof navigator === "undefined") {
       return null;
     }
@@ -151,12 +171,30 @@ export class DnxWebGpuRenderer {
       usage: BUFFER_USAGE_COPY_DST_AND_UNIFORM
     });
 
-    return new DnxWebGpuRenderer(canvas, context, device, pipeline, paramsBuffer);
+    return new DnxWebGpuRenderer(
+      canvas,
+      context,
+      device,
+      pipeline,
+      paramsBuffer,
+      options.onDeviceLost ?? (() => undefined)
+    );
+  }
+
+  get isDestroyed(): boolean {
+    return this.destroyed;
+  }
+
+  get isDeviceLost(): boolean {
+    return this.deviceLost;
   }
 
   render(frame: DecodeFrame): void {
     if (this.destroyed) {
       throw new Error("DNx WebGPU renderer is destroyed.");
+    }
+    if (this.deviceLost) {
+      throw new Error("DNx WebGPU renderer device is lost.");
     }
     if (!isSupportedFrame(frame)) {
       throw new Error(`DNx WebGPU renderer does not support ${frame.format} frame data.`);

@@ -25,6 +25,7 @@ const canvas = {
 };
 const renderer = module.DnxCanvasRenderer.create(canvas);
 assert.ok(renderer);
+assert.equal(renderer.isDestroyed, false);
 
 renderer.render(makeYuvFrame("yuv444p8", 2, 1, [16, 235], [128, 128], [128, 128]));
 assert.deepEqual(Array.from(writes.at(-1).imageData.data), [0, 0, 0, 255, 255, 255, 255, 255]);
@@ -46,6 +47,8 @@ assert.equal(module.DnxCanvasRenderer.supports(makeYuvFrame("yuv422p8", 2, 1, [1
 assert.equal(module.DnxCanvasRenderer.supports({ index: 0, timestampUs: 0, width: 1, height: 1, format: "rgba8" }), false);
 assert.throws(() => renderer.render({ index: 0, timestampUs: 0, width: 1, height: 1, format: "rgba8" }), /does not support/);
 renderer.destroy();
+renderer.destroy();
+assert.equal(renderer.isDestroyed, true);
 assert.throws(
   () => renderer.render(makeYuvFrame("yuv444p8", 1, 1, [16], [128], [128])),
   /destroyed/
