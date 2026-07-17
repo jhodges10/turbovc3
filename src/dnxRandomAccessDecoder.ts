@@ -171,11 +171,16 @@ export class DnxRandomAccessDecoder implements AsyncDisposable {
       height: decoded.visibleHeight,
       format: decoded.pixelFormat,
       colorSpace: dnxColorSpaceForHeader(decoded.header),
-      scanType: "progressive",
+      pixelAspectRatio: {
+        numerator: decoded.pixelAspectRatio.num,
+        denominator: decoded.pixelAspectRatio.den
+      },
+      scanType: decoded.scanType === "progressive" ? "progressive" : "interlaced",
       planes: decoded.layout.planes,
       metadata: {
         header: decoded.header,
         idctMode: this.decoder.idctMode,
+        scanType: decoded.scanType,
         randomAccess: true
       }
     };

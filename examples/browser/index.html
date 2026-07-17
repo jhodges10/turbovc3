@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>turbovc3 MXF player example</title>
+    <style>
+      :root { color-scheme: dark; font: 16px/1.45 system-ui, sans-serif; background: #111; color: #eee; }
+      body { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+      header, .controls, .diagnostics { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+      header { justify-content: space-between; }
+      canvas { display: block; width: 100%; margin: 1rem 0; background: #000; aspect-ratio: 16 / 9; }
+      input[type="range"] { flex: 1; min-width: 16rem; }
+      button, input { font: inherit; }
+      pre { background: #1d1d1d; padding: 1rem; overflow: auto; }
+      .status { color: #9ad; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>turbovc3 MXF player</h1>
+        <p>Minimal decode, seek, PCM audio-clock, and backend diagnostics example.</p>
+      </div>
+      <input id="file" type="file" accept=".mxf,application/mxf">
+    </header>
+    <canvas id="video"></canvas>
+    <div class="controls">
+      <button id="play" type="button" disabled>Play</button>
+      <button id="pause" type="button" disabled>Pause</button>
+      <input id="seek" type="range" min="0" max="0" value="0" step="1" disabled>
+      <output id="position">0 / 0</output>
+    </div>
+    <p id="status" class="status">Choose an OP1a or OPAtom DNx MXF file.</p>
+    <pre id="diagnostics">No file open.</pre>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

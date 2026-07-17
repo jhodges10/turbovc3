@@ -243,6 +243,10 @@ returns an independent tightly packed layout and does not alter the reusable dec
 unavailable so applications can select the fallback explicitly.
 Both renderers expose `isDestroyed`; the WebGPU renderer also exposes `isDeviceLost` and an `onDeviceLost` callback.
 
+The maintained [browser example](examples/browser/README.md) opens local MXF files, decodes and seeks through the
+source-backed API, presents through Canvas2D, follows MXF PCM audio when present, and displays backend/cache/I/O
+diagnostics. Run it with `npm run example:browser`.
+
 ## Develop
 
 Requirements for the ordinary workflow are Node.js 22+ and npm:
