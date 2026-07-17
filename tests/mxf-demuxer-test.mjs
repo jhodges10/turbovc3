@@ -38,6 +38,17 @@ await testFixture(module, "samples/mxf_demux_opatom_dnx.mxf", {
 });
 await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf", 1);
 await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
+await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf", 1, {
+  frameRate: 24,
+  sampleRate: 48_000,
+  channels: 1,
+  bitsPerSample: 24
+});
+await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf", {
+  frameRate: 24,
+  startTimecode: 89_356,
+  formatted: "01:02:03:04"
+});
 await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
   width: 1280,
   height: 720,
@@ -221,7 +232,7 @@ async function testFixture(module, relativePath, expected) {
   }
 }
 
-async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 30) {
+async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 30, expected = {}) {
   const fixturePath = path.join(repoRoot, relativePath);
   if (!existsSync(fixturePath)) {
     console.log(`Skipping missing local fixture ${relativePath}.`);
@@ -234,41 +245,37 @@ async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 
   assert.ok(video);
   assert.ok(audio);
   assert.equal(video.packetCount, expectedFrameCount);
+  assert.equal(video.editRate.numerator, expected.frameRate ?? 30);
   assert.equal(video.descriptor?.width, 1280);
   assert.equal(video.descriptor?.height, 720);
   assert.equal(audio.packetCount, expectedFrameCount);
-  assert.equal(audio.descriptor?.sampleRate?.numerator, 48000);
+  assert.equal(audio.descriptor?.sampleRate?.numerator, expected.sampleRate ?? 48_000);
   assert.equal(audio.descriptor?.sampleRate?.denominator, 1);
-  assert.equal(audio.descriptor?.channels, 2);
-  assert.equal(audio.descriptor?.bitsPerSample, 16);
+  assert.equal(audio.descriptor?.channels, expected.channels ?? 2);
+  assert.equal(audio.descriptor?.bitsPerSample, expected.bitsPerSample ?? 16);
   if (expectedFrameCount > 1) {
     assert.equal(demuxer.packetsForTrack(audio)[1].timestampUs, 33333);
   }
   console.log(`${relativePath}: video and audio tracks resolved`);
 }
 
-async function testTimecodeFixture(module, relativePath) {
+async function testTimecodeFixture(module, relativePath, expected = {}) {
   const bytes = new Uint8Array(await readFile(path.join(repoRoot, relativePath)));
   const demuxer = await module.MxfDemuxer.open(bytes);
   assert.equal(demuxer.timecodeTracks.length, 2);
   assert.deepEqual(demuxer.timecodeTracks.map((track) => track.packageKind), ["material", "source"]);
   for (const track of demuxer.timecodeTracks) {
     assert.equal(track.packageUid?.length, 64);
-    assert.equal(track.editRate.numerator, 30);
+    assert.equal(track.editRate.numerator, expected.frameRate ?? 30);
     assert.equal(track.editRate.denominator, 1);
     assert.equal(track.duration, 1);
-    assert.equal(track.startTimecode, 0);
-    assert.equal(track.roundedTimecodeBase, 30);
+    assert.equal(track.startTimecode, expected.startTimecode ?? 0);
+    assert.equal(track.roundedTimecodeBase, expected.frameRate ?? 30);
     assert.equal(track.dropFrame, false);
-    assert.deepEqual(demuxer.timecodeAt(track, 0), {
-      frameNumber: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      frames: 0,
-      dropFrame: false,
-      formatted: "00:00:00:00"
-    });
+    const timecode = demuxer.timecodeAt(track, 0);
+    assert.equal(timecode.frameNumber, expected.startTimecode ?? 0);
+    assert.equal(timecode.dropFrame, false);
+    assert.equal(timecode.formatted, expected.formatted ?? "00:00:00:00");
   }
 }
 

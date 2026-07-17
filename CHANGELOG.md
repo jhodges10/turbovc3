@@ -42,6 +42,8 @@ All notable changes to turbovc3 will be documented here.
 - Bit-exact committed FFmpeg oracles for DNxHD CIDs 1235/1237 and DNxHR LB/SQ/HQ CIDs 1274/1273/1272, completing
   required CI coverage for every progressive DNx profile FFmpeg 8 can emit.
 - Material/source MXF timecode-track exposure with edit-unit mapping and ordinary/drop-frame SMPTE formatting.
+- A bit-exact 24 fps OP1a fixture covering mono 24-bit PCM playback and non-zero material/source timecode alongside
+  the existing 30 fps stereo 16-bit contract.
 
 ### Changed
 

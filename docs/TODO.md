@@ -106,7 +106,10 @@ Initial performance target:
 - [x] Add explicit pause/resume, seek, end-of-stream, and opt-in underrun recovery behavior.
 - [x] Make the Web Audio context authoritative and expose `videoDecision()` so callers drop late frames, hold early
   frames, and present frames within a configurable tolerance.
-- [ ] Add OP1a fixtures with PCM at multiple frame rates, sample rates, channel counts, and non-zero start timecode.
+- [x] Add bit-exact OP1a fixtures spanning 24/30 fps, mono/stereo, 16/24-bit PCM, and non-zero material/source
+  timecode.
+- [ ] Add real OP1a PCM fixtures at sample rates other than 48 kHz; FFmpeg 8's MXF muxer rejects them, so this needs
+  another redistributable authoring source.
 - [ ] Keep unsupported compressed MXF audio explicit; do not silently treat arbitrary sound essence as PCM.
 
 ## P1: Codec Coverage

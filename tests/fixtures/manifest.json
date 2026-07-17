@@ -250,6 +250,24 @@
       ]
     },
     {
+      "path": "dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf",
+      "sha256": "be5364fba41d806e9c74ec7dcb8429095c38804fa81c119e35395d52f7408aae",
+      "cid": 1274,
+      "width": 1280,
+      "height": 720,
+      "frameRate": "24/1",
+      "audio": {
+        "codec": "pcm_s24le",
+        "sampleRate": 48000,
+        "channels": 1
+      },
+      "materialTimecode": "01:02:03:04",
+      "tracks": [
+        "video",
+        "audio"
+      ]
+    },
+    {
       "path": "dnxhr-lb-opatom.mxf",
       "sha256": "f8ca1930f243f7fd779e231e66b7f5e5fb53fad4d79ec3aec623264a309aca11",
       "cid": 1274,

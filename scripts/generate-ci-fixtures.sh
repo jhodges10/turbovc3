@@ -148,6 +148,14 @@ run_ffmpeg -v error -y \
   "$OUTPUT_DIR/dnxhr-lb-op1a-pcm.mxf"
 
 run_ffmpeg -v error -y \
+  -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=1" \
+  -f lavfi -i "sine=frequency=750:sample_rate=48000:duration=1" \
+  -frames:v 1 -map 0:v:0 -map 1:a:0 -pix_fmt yuv422p \
+  -c:v dnxhd -profile:v dnxhr_lb -c:a pcm_s24le -ar 48000 -ac 1 \
+  -metadata creation_time=1970-01-01T00:00:00Z -timecode 01:02:03:04 \
+  "$OUTPUT_DIR/dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf"
+
+run_ffmpeg -v error -y \
   -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=1" \
   -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhr_lb \
   -metadata creation_time=1970-01-01T00:00:00Z -f mxf_opatom \
