@@ -96,6 +96,12 @@ mkdir -p "$OUTPUT_DIR"
   "$OUTPUT_DIR/oracle_dnxhr_444_1080p30_10bit.mov"
 
 "$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1920x1080:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt gbrp10le -c:v dnxhd -profile:v dnxhr_444 -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhr_444_gbr_1080p30_10bit.mov"
+
+"$FFMPEG" -v error -y \
   -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=1" \
   -f lavfi -i "sine=frequency=1000:sample_rate=48000:duration=1" \
   -frames:v 1 -map 0:v:0 -map 1:a:0 -pix_fmt yuv422p \
@@ -122,7 +128,8 @@ for fixture in \
   "oracle_dnxhd_960x720p30_8bit_cid1258.mxf yuv422p" \
   "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf yuv422p" \
   "oracle_dnxhr_hqx_1080p30_10bit_cid1271.mov yuv422p10le" \
-  "oracle_dnxhr_444_1080p30_10bit.mov yuv444p10le"
+  "oracle_dnxhr_444_1080p30_10bit.mov yuv444p10le" \
+  "oracle_dnxhr_444_gbr_1080p30_10bit.mov gbrp10le"
 do
   file="${fixture%% *}"
   format="${fixture##* }"

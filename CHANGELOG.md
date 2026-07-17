@@ -38,6 +38,7 @@ All notable changes to turbovc3 will be documented here.
 - Release-tag publication now gates on API reports plus Chromium, Firefox, WebKit, Deno, and Bun runtime tests.
 - Interlaced DNxHD CIDs 1241-1244 with two-field weaving, field-order metadata, and FFmpeg/native oracle coverage.
 - FFmpeg's experimental field-coded CID 1260 subset, while retaining explicit rejection for adaptive MBAFF packets.
+- Paired DNxHR 4:4:4 YUV/GBR oracles proving adaptive-color-transform selection and planar channel ordering.
 
 ### Changed
 

@@ -202,6 +202,23 @@ const supportedFixtures = [
       width: 1920,
       height: 1080,
       pixelFormat: "yuv444p10",
+      adaptiveColorTransform: true,
+      frameCount: frames
+    }
+  },
+  {
+    name: "dnxhr-444-gbr-1080p30-10bit-cid1270",
+    output: path.join(fixtureDir, "oracle_dnxhr_444_gbr_1080p30_10bit.mov"),
+    vf: "fps=30,scale=1920:1080,format=gbrp10le",
+    profile: "dnxhr_444",
+    oraclePixelFormat: "gbrp10le",
+    expected: {
+      cid: 1270,
+      profile: "dnxhr_444",
+      width: 1920,
+      height: 1080,
+      pixelFormat: "gbrp10",
+      adaptiveColorTransform: false,
       frameCount: frames
     }
   },
@@ -450,6 +467,13 @@ async function runOracleComparison(decoder, fixture) {
     assertEqual(decoded.header.width, fixture.expected.width, `${fixture.name} width`);
     assertEqual(decoded.header.height, fixture.expected.height, `${fixture.name} height`);
     assertEqual(decoded.header.pixelFormat, fixture.expected.pixelFormat, `${fixture.name} pixel format`);
+    if (fixture.expected.adaptiveColorTransform !== undefined) {
+      assertEqual(
+        decoded.header.adaptiveColorTransform,
+        fixture.expected.adaptiveColorTransform,
+        `${fixture.name} adaptive color transform`
+      );
+    }
     assertEqual(decoded.frameCount, fixture.expected.frameCount, `${fixture.name} frame count`);
 
     const stats = diffSamples(decoded.visibleBytes, oracleBytes, decoded.bytesPerSample);
