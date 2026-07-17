@@ -13,6 +13,8 @@ All notable changes to turbovc3 will be documented here.
 - A `@jhodges10/turbovc3/node` entry point backed by `node:worker_threads`, plus an injectable worker factory for
   runtimes that do not expose the browser `Worker` global.
 - Committed API Extractor reports and deterministic DNx/MXF mutation testing in CI.
+- A manifest-driven malformed DNx boundary corpus covering headers, rows, VLC, quantization headers, macroblock
+  counts, payload tails, and frame sizes.
 
 ### Changed
 

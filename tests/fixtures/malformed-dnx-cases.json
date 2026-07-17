@@ -1,0 +1,60 @@
+{
+  "seed": "dnxhr-lb-op1a-pcm.mxf",
+  "description": "Deterministic malformed DNx packet recipes derived from the first committed OP1a video packet.",
+  "cases": [
+    {
+      "name": "truncated-header",
+      "mutation": { "type": "truncate", "length": 639 },
+      "error": "DnxUnexpectedEofError",
+      "message": "frame header requires"
+    },
+    {
+      "name": "truncated-frame-size",
+      "mutation": { "type": "truncate-half" },
+      "error": "DnxUnexpectedEofError",
+      "message": "requires"
+    },
+    {
+      "name": "invalid-header-prefix",
+      "mutation": { "type": "xor", "offset": 0, "value": 255 },
+      "error": "DnxInvalidDataError",
+      "message": "valid DNx frame header"
+    },
+    {
+      "name": "row-offset-outside-payload",
+      "mutation": { "type": "set-u32be", "offset": 368, "value": 4294967295 },
+      "error": "DnxInvalidDataError",
+      "message": "outside the macroblock payload"
+    },
+    {
+      "name": "invalid-row-span",
+      "mutation": { "type": "set-u32be-pairs", "values": [[368, 100], [372, 0]] },
+      "error": "DnxInvalidDataError",
+      "message": "row scan span 0 is invalid"
+    },
+    {
+      "name": "truncated-quantization-header",
+      "mutation": { "type": "set-u32be", "offset": 372, "value": 1 },
+      "error": "DnxUnexpectedEofError",
+      "message": "Unexpected end of DNx macroblock header"
+    },
+    {
+      "name": "invalid-vlc-data",
+      "mutation": { "type": "fill-first-row", "value": 0 },
+      "error": "DnxInvalidDataError",
+      "message": "AC coefficients overrun"
+    },
+    {
+      "name": "truncated-macroblock-count",
+      "mutation": { "type": "set-u32be", "offset": 372, "value": 256 },
+      "error": "DnxInvalidDataError",
+      "message": "row 0, macroblock 1"
+    },
+    {
+      "name": "truncated-payload-tail",
+      "mutation": { "type": "fill-tail", "length": 1024, "value": 0 },
+      "error": "DnxUnexpectedEofError",
+      "message": "Unexpected end of DNx"
+    }
+  ]
+}
