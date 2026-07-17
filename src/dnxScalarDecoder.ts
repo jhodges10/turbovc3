@@ -327,7 +327,7 @@ function decodeDnxCodingUnit(
   const interlacedMacroblocks = header.mbaff ? new Uint8Array(header.macroblockWidth) : null;
   let macroblocksDecoded = 0;
 
-  if (rowDecoder && !header.mbaff) {
+  if (rowDecoder) {
     try {
       const frameBytes = rowDecoder.decodeFrame(
         packet,
@@ -336,6 +336,7 @@ function decodeDnxCodingUnit(
         header.macroblockHeight,
         header.bitDepth,
         header.is444,
+        header.mbaff,
         tables
       );
       new Uint8Array(layout.planes[0].bytes.buffer).set(frameBytes);

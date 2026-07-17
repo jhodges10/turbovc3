@@ -32,6 +32,7 @@ try {
       decoder.capacities.rows + 1,
       8,
       false,
+      false,
       null
     ),
     /row count 257 exceeds.*capacity of 256/
@@ -43,6 +44,7 @@ try {
       1,
       1,
       8,
+      false,
       false,
       null
     ),

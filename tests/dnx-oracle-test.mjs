@@ -894,9 +894,7 @@ async function loadBundledDecoder() {
         rowsDecoded: decoded.rowsDecoded,
         macroblocksDecoded: decoded.macroblocksDecoded,
         elapsedMs,
-        idctMode: rowDecoder && !packet.header.mbaff
-          ? rowDecoder.mode
-          : idctKernel?.mode ?? "typescript-idct",
+        idctMode: rowDecoder?.mode ?? idctKernel?.mode ?? "typescript-idct",
         bytesPerSample,
         visibleBytes
       };

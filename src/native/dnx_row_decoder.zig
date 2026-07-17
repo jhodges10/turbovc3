@@ -106,7 +106,7 @@ const BitReader = struct {
 };
 
 export fn dnx_row_decoder_version() u32 {
-    return 3;
+    return 4;
 }
 
 export fn dnx_row_capacity() u32 {
@@ -251,11 +251,12 @@ export fn dnx_decode_frame(
     level_bias: i32,
     level_shift: u32,
     is_444: u32,
+    mbaff: u32,
 ) u32 {
     if (packet_length > MAX_PACKET_BYTES or macroblock_width == 0 or macroblock_width > MAX_MACROBLOCKS or
         macroblock_height == 0 or macroblock_height > MAX_ROWS or
         (bit_depth != 8 and bit_depth != 10 and bit_depth != 12) or ac_info_length > MAX_AC_INFO or
-        run_values_length > MAX_RUN_VALUES or level_shift > 31 or is_444 > 1)
+        run_values_length > MAX_RUN_VALUES or level_shift > 31 or is_444 > 1 or mbaff > 1)
     {
         return @intFromEnum(DecodeError.invalid_arguments);
     }
@@ -284,6 +285,7 @@ export fn dnx_decode_frame(
             level_bias,
             level_shift,
             is_444 != 0,
+            mbaff != 0,
         );
         if (result != .ok) return @intFromEnum(result);
     }
@@ -301,7 +303,7 @@ test "native capacity exports and oversized arguments are safe" {
     );
     try std.testing.expectEqual(
         @intFromEnum(DecodeError.invalid_arguments),
-        dnx_decode_frame(0, std.math.maxInt(u32), std.math.maxInt(u32), 12, 0, 0, 0, 0, 0, 0, 1),
+        dnx_decode_frame(0, std.math.maxInt(u32), std.math.maxInt(u32), 12, 0, 0, 0, 0, 0, 0, 1, 0),
     );
 }
 
@@ -318,6 +320,7 @@ fn decodeRowIntoFrame(
     level_bias: i32,
     level_shift: u32,
     is_444: bool,
+    mbaff: bool,
 ) DecodeError {
     diagnostic_stage = 1;
     diagnostic_macroblock = 0;
@@ -340,7 +343,11 @@ fn decodeRowIntoFrame(
         diagnostic_stage = 2;
         diagnostic_macroblock = @intCast(macroblock);
         diagnostic_bit_offset = @intCast(reader.bits_read);
-        const qscale_value = reader.readBits(11) orelse return .macroblock_header;
+        const interlaced = if (mbaff)
+            (reader.readBits(1) orelse return .macroblock_header) != 0
+        else
+            false;
+        const qscale_value = reader.readBits(if (mbaff) 10 else 11) orelse return .macroblock_header;
         _ = reader.readBits(1) orelse return .macroblock_header;
 
         const qscale: i32 = @intCast(qscale_value);
@@ -388,7 +395,16 @@ fn decodeRowIntoFrame(
                 fast_idct.transformDcBlock(coefficients[0], samples[0..].ptr, maximum);
             }
             diagnostic_stage = 5;
-            storeDecodedBlock(macroblock_width, macroblock_height, row, bit_depth, macroblock, block_index, is_444);
+            storeDecodedBlock(
+                macroblock_width,
+                macroblock_height,
+                row,
+                bit_depth,
+                macroblock,
+                block_index,
+                is_444,
+                interlaced,
+            );
         }
     }
 
@@ -581,6 +597,7 @@ fn storeDecodedBlock(
     macroblock: usize,
     block_index: usize,
     is_444: bool,
+    interlaced: bool,
 ) void {
     const bytes_per_sample: usize = if (bit_depth == 8) 1 else 2;
     const luma_width: usize = @as(usize, macroblock_width) * 16;
@@ -592,26 +609,28 @@ fn storeDecodedBlock(
     const luma_x = macroblock * 16;
     const chroma_x = macroblock * chroma_macroblock_width;
     const y = @as(usize, row) * 16;
+    const line_step: usize = if (interlaced) 2 else 1;
+    const bottom_offset: usize = if (interlaced) 1 else 8;
 
     if (is_444) {
         const plane = (block_index >> 1) % 3;
         const quadrant = block_index / 6 * 2 + block_index % 2;
         const plane_start = plane * y_size;
         const block_x = luma_x + (quadrant % 2) * 8;
-        const block_y = y + (quadrant / 2) * 8;
-        storeBlock(plane_start, luma_width, bytes_per_sample, block_x, block_y, 0);
+        const block_y = y + (quadrant / 2) * bottom_offset;
+        storeBlock(plane_start, luma_width, bytes_per_sample, block_x, block_y, 0, line_step);
         return;
     }
 
     switch (block_index) {
-        0 => storeBlock(0, luma_width, bytes_per_sample, luma_x, y, 0),
-        1 => storeBlock(0, luma_width, bytes_per_sample, luma_x + 8, y, 0),
-        2 => storeBlock(y_size, chroma_width, bytes_per_sample, chroma_x, y, 0),
-        3 => storeBlock(y_size + chroma_size, chroma_width, bytes_per_sample, chroma_x, y, 0),
-        4 => storeBlock(0, luma_width, bytes_per_sample, luma_x, y + 8, 0),
-        5 => storeBlock(0, luma_width, bytes_per_sample, luma_x + 8, y + 8, 0),
-        6 => storeBlock(y_size, chroma_width, bytes_per_sample, chroma_x, y + 8, 0),
-        7 => storeBlock(y_size + chroma_size, chroma_width, bytes_per_sample, chroma_x, y + 8, 0),
+        0 => storeBlock(0, luma_width, bytes_per_sample, luma_x, y, 0, line_step),
+        1 => storeBlock(0, luma_width, bytes_per_sample, luma_x + 8, y, 0, line_step),
+        2 => storeBlock(y_size, chroma_width, bytes_per_sample, chroma_x, y, 0, line_step),
+        3 => storeBlock(y_size + chroma_size, chroma_width, bytes_per_sample, chroma_x, y, 0, line_step),
+        4 => storeBlock(0, luma_width, bytes_per_sample, luma_x, y + bottom_offset, 0, line_step),
+        5 => storeBlock(0, luma_width, bytes_per_sample, luma_x + 8, y + bottom_offset, 0, line_step),
+        6 => storeBlock(y_size, chroma_width, bytes_per_sample, chroma_x, y + bottom_offset, 0, line_step),
+        7 => storeBlock(y_size + chroma_size, chroma_width, bytes_per_sample, chroma_x, y + bottom_offset, 0, line_step),
         else => unreachable,
     }
 }
@@ -623,13 +642,14 @@ fn storeBlock(
     x: usize,
     y: usize,
     block: usize,
+    line_step: usize,
 ) void {
     const samples_ptr: [*]u16 = @ptrCast(&samples);
     const sample_start = block * 64;
     if (bytes_per_sample == 1) {
         const frame_ptr: [*]u8 = @ptrCast(&frame_bytes);
         for (0..8) |block_row| {
-            const output_start = plane_start + (y + block_row) * stride_samples + x;
+            const output_start = plane_start + (y + block_row * line_step) * stride_samples + x;
             const input_start = sample_start + block_row * 8;
             const source: *align(1) const @Vector(8, u16) = @ptrCast(samples_ptr + input_start);
             const target: *align(1) @Vector(8, u8) = @ptrCast(frame_ptr + output_start);
@@ -639,7 +659,7 @@ fn storeBlock(
         const frame_ptr: [*]u16 = @ptrCast(@alignCast(&frame_bytes));
         const plane_start_samples = plane_start / 2;
         for (0..8) |block_row| {
-            const output_start = plane_start_samples + (y + block_row) * stride_samples + x;
+            const output_start = plane_start_samples + (y + block_row * line_step) * stride_samples + x;
             const input_start = sample_start + block_row * 8;
             const source: *align(1) const @Vector(8, u16) = @ptrCast(samples_ptr + input_start);
             const target: *align(1) @Vector(8, u16) = @ptrCast(frame_ptr + output_start);

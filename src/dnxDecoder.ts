@@ -539,7 +539,7 @@ export class Decoder implements AsyncDisposable {
             packetData,
             header,
             this.idctKernel ?? undefined,
-            header.mbaff ? null : this.rowDecoder,
+            this.rowDecoder,
             backingBuffer
           );
           const layout = convertDnxFrameLayout(decoded.layout, sourcePixelFormat, outputPixelFormat, header.colorSpace);
