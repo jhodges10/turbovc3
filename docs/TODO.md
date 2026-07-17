@@ -1,0 +1,183 @@
+# turbovc3 Roadmap
+
+Last updated: 2026-07-17
+
+This roadmap starts from the `0.1.0` implementation. turbovc3 already decodes progressive DNxHD/DNxHR through
+TypeScript and Zig/WASM backends, integrates with Mediabunny for MOV/QuickTime, demuxes DNx from OP1a and OPAtom
+MXF, renders planar output with WebGPU, and exposes audio and random-access helpers.
+
+Priorities are ordered by user impact and by how much they reduce risk for downstream applications. Items marked
+P0 should land before broad production use; P1 expands the supported media surface; P2 improves adoption and
+maintainability.
+
+## TurboRes Parity Progress (Decode Only)
+
+Completed in the current `0.2` work:
+
+- [x] Settle concurrent packet-worker decodes in submission order and drain accepted work during `close()`.
+- [x] Cover frame locking, reuse, explicit packet transfer, close-during-decode, and multiple backend fallback paths.
+- [x] Add `Frame.isFilled()`, `Frame.toFilled()`, pixel aspect ratio, numeric color metadata, range, scan type, and
+  WebCodecs-style color string getters.
+- [x] Support the planar 8/10/12-bit 4:2:0, 4:2:2, and 4:4:4 conversion/render matrix where a conversion from the
+  decoded DNx source format is defined.
+
+Remaining parity work is intentionally not marked complete without codec fixtures and oracle evidence:
+
+- [ ] Replace per-worker WASM instances and per-decode shared buffers with a measured shared-runtime/buffer-reuse
+  design, then prove the allocation and throughput improvement.
+- [ ] Bundle worker/WASM startup for browser and server runtimes and test Chromium, Firefox, Safari, Node, Deno, and
+  Bun rather than relying on browser-global `Worker`/`fetch` behavior.
+- [ ] Implement interlaced/MBAFF and alpha/low-latency-alpha decode, rendering, and lifetime contracts.
+- [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
+- [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.
+
+## P0: Source-Backed Decode and Fast Seeking
+
+- [x] Let `demuxDnxMxf()` and `DnxRandomAccessDecoder.create()` accept `Blob`, `File`, and `MxfSource`, not only a
+  whole-file `Uint8Array`.
+- [x] Keep MXF packet locators in the index and read only the requested compressed frame during random access.
+- [x] Avoid eagerly validating and retaining every DNx packet when opening long or UHD clips.
+- [x] Add cancellation with `AbortSignal` for open, index, decode, seek, and prefetch operations.
+- [x] Coalesce rapid seek requests so only one decode and the newest requested target remain in flight.
+- [x] Add a small, bounded compressed-packet cache and optional adjacent-frame prefetch without retaining decoded
+  clips in memory.
+- [x] Expose indexing progress and byte-read counters for large local and remote sources.
+
+Acceptance criteria:
+
+- Opening the 2,285-frame HD and UHD MXF fixtures does not read or copy the complete file.
+- A random seek reads the target packet plus a documented, bounded amount of metadata and prefetch data.
+- Repeated scrub cancellation does not leak workers, WASM memory, frames, or file handles.
+- Benchmarks report cold and warm seek p50/p95 latency separately.
+
+## P0: Browser and Performance Gates
+
+- [ ] Add browser integration tests for current Chromium, Firefox, and Safari releases.
+- [ ] Exercise cross-origin-isolated shared-row workers, ordinary packet workers, synchronous WASM, and TypeScript
+  fallback paths in CI or a scheduled browser matrix.
+- [ ] Test real WebGPU output and the non-WebGPU rendering fallback with pixel comparisons, not only mocked GPU
+  contracts.
+- [ ] Add sustained playback tests for 1080p60 and UHD60 fixtures, including play, pause, backward seek, rapid scrub,
+  end-of-stream, and decoder teardown.
+- [ ] Establish benchmark hardware and publish decode FPS, render FPS, dropped frames, memory high-water mark,
+  startup latency, and seek p50/p95.
+- [ ] Add regression budgets for the Zig/WASM frame path, worker scheduling overhead, and YUV upload/render time.
+- [ ] Replace fixed native capacity limits with dimensions derived from validated frame headers where practical, and
+  test maximum supported rows, packets, macroblocks, and frame allocations.
+- [ ] Profile packet copies and plane uploads; pool reusable buffers and GPU resources where measurements justify it.
+
+Initial performance target:
+
+- Sustain 1920x1080 progressive DNxHR playback at 60 FPS on documented baseline hardware with zero steady-state
+  drops.
+- Measure UHD60 honestly before making it a release guarantee; track decode, upload, and presentation bottlenecks
+  independently.
+
+## P0: Correctness and Input Hardening
+
+- [ ] Add malformed and truncated DNx fixtures for every parser boundary: header, row offsets, VLC data, quantization,
+  macroblock count, and frame size.
+- [ ] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, partition chains,
+  index arrays, random index packs, and out-of-range offsets.
+- [ ] Add fuzz targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing.
+- [x] Enforce configurable MXF limits for metadata size, KLV count, track count, packet count, descriptor dimensions,
+  and resynchronization work. Native frame allocation limits remain tracked under the performance gates.
+- [ ] Verify worker and main-thread errors preserve stable typed error categories and useful packet/frame context.
+- [ ] Expand oracle comparisons to cover frame edges, coded padding, odd visible dimensions, and all output plane
+  strides.
+- [ ] Run sanitizer-backed native tests where the Zig/Emscripten toolchains support them.
+
+## P1: Audio and A/V Playback
+
+- [ ] Extend `DnxAudioPlayback` beyond MOV/MP4 so it can consume PCM packets and metadata from `MxfDemuxer`.
+- [ ] Support common MXF PCM layouts, including endian, valid-bit-depth, channel-count, and edit-rate differences.
+- [ ] Introduce a reusable playback clock that coordinates video presentation with Web Audio.
+- [ ] Add drift correction, underrun recovery, pause/resume, seek, and end-of-stream behavior.
+- [ ] Define whether audio or wall clock is authoritative and document frame drop/repeat behavior when synchronization
+  diverges.
+- [ ] Add OP1a fixtures with PCM at multiple frame rates, sample rates, channel counts, and non-zero start timecode.
+- [ ] Keep unsupported compressed MXF audio explicit; do not silently treat arbitrary sound essence as PCM.
+
+## P1: Codec Coverage
+
+- [ ] Implement interlaced DNxHD and MBAFF, beginning with CIDs 1241-1244 and 1260.
+- [ ] Add field-order, field-height, line-placement, timing, and deinterlacing integration tests.
+- [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
+- [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage.
+- [ ] Expand the CID fixture matrix for currently declared DNxHD CIDs, especially 1250, 1252, 1253, 1256, 1258,
+  and 1259.
+- [ ] Verify adaptive color transform behavior across scalar, Zig/WASM, Mediabunny, and WebGPU paths.
+- [ ] Audit unknown-CID handling against current VC-3 registrations without accepting frames solely from plausible
+  dimensions or packet sizes.
+- [ ] Document any valid VC-3 profiles intentionally excluded from browser decode.
+
+## P1: Color and Frame Interoperability
+
+- [ ] Expand color metadata beyond the current Rec. 709/Rec. 2020 matrix mapping to preserve primaries, transfer,
+  matrix, range, and chromaticity information when present.
+- [ ] Add independent shader/oracle tests for Rec. 709, Rec. 2020 non-constant luminance, Rec. 2020 constant
+  luminance, GBR, 10-bit, and 12-bit paths.
+- [ ] Define tone-mapping behavior for HDR-tagged content instead of relying on the destination surface implicitly.
+- [ ] Add frame-copy helpers with explicit strides, plane sizes, and destination layout validation.
+- [ ] Investigate a `VideoFrame` or WebCodecs-style bridge while preserving the reusable planar `Frame` API.
+- [ ] Make GPU texture reuse, canvas resizing, device loss, and renderer teardown part of the public renderer contract.
+
+## P1: General MXF Demuxing
+
+- [ ] Test multiple body partitions, multiple index table segments, sparse indexes, zero `IndexDuration`, and footer
+  metadata updates from real-world authoring tools.
+- [ ] Support variable-byte-count clip wrapping when index entry offsets are present and reject ambiguous layouts
+  deterministically.
+- [ ] Improve package/sequence/source-clip resolution for files with multiple material packages and source packages.
+- [ ] Expose timecode tracks and a stable API for mapping edit units to source and material timecode.
+- [ ] Validate KAG alignment, partition-link consistency, BodySID/IndexSID associations, and operational patterns.
+- [ ] Add fixtures from FFmpeg, Avid, Adobe, Resolve, and other generators where licensing permits redistribution.
+- [ ] Decide which additional operational patterns are in scope. Do not imply general OP1b or growing-file support
+  until packet timelines are tested.
+- [ ] Add an incremental/growing-file mode only after source-size changes, incomplete partitions, and index refreshes
+  have explicit semantics.
+
+## P1: Mediabunny Integration
+
+- [ ] Track first-class DNx codec recognition in Mediabunny and remove the guarded track shim when the upstream API
+  makes it unnecessary.
+- [ ] Propose or contribute upstream `AVdn`/`AVdh` recognition and a supported DNx extension registration path.
+- [ ] Add compatibility tests against the oldest supported and newest released Mediabunny versions.
+- [ ] Detect incompatible Mediabunny API changes with a clear setup error instead of failing during first decode.
+- [ ] Revisit an official `@mediabunny/dnx` package only when ownership, release cadence, and compatibility contracts
+  are agreed upstream.
+
+## P2: API Stability and Developer Experience
+
+- [ ] Define the intended `1.0` public API and keep worker protocols, reconstruction tables, and native implementation
+  details private.
+- [ ] Document ownership and lifetime rules for `Decoder`, `Frame`, packet buffers, workers, renderers, and audio
+  contexts.
+- [ ] Add API Extractor or an equivalent public-surface diff to CI so accidental exports and breaking type changes
+  are visible.
+- [ ] Publish recipes for Vite, Next.js, Webpack, CSP-constrained deployments, worker URLs, WASM asset hosting, and
+  COOP/COEP headers.
+- [ ] Add a small maintained example application that demonstrates file open, decode, playback, audio, seek, and
+  backend diagnostics without moving codec behavior into the example.
+- [ ] Decide whether to publish on npmjs in addition to GitHub Packages.
+- [ ] Document browser support, Mediabunny compatibility, security limits, and fixture provenance per release.
+- [ ] Add release automation for prereleases and a generated package/API compatibility report.
+
+## Suggested Milestones
+
+1. **0.2 - Lazy random access:** source-backed MXF/DNx indexing, cancellation, seek benchmarks, and bounded caching.
+2. **0.3 - Playback confidence:** real-browser matrix, sustained playback gates, MXF PCM playback, and A/V clocking.
+3. **0.4 - Format coverage:** dedicated 12-bit 4:4:4 coverage, wider CID fixtures, and color pipeline hardening.
+4. **0.5 - Interlaced and alpha:** interlaced/MBAFF decode, alpha planes, and their renderer/Mediabunny contracts.
+5. **1.0 - Stable package:** documented compatibility matrix, hardened malformed-input handling, stable API, and
+   published performance guarantees on named hardware.
+
+## Explicit Non-Goals for Now
+
+- DNx encoding or transcoding.
+- MXF muxing or metadata editing.
+- A general-purpose media player UI inside the package.
+- Claiming support for every MXF operational pattern or essence codec.
+- Replacing Mediabunny for MOV/QuickTime parsing.
+
+These can be reconsidered after the decoder, demuxer, playback clocks, and public API have stable production usage.

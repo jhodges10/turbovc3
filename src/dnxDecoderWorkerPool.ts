@@ -4,6 +4,7 @@ import type {
   DnxPacketWorkerResponse,
   DnxWorkerFrameContents
 } from "./dnxDecoderWorkerProtocol.js";
+import { dnxFrameMetadataForHeader } from "./dnxFrame.js";
 
 interface WorkerSlot {
   worker: Worker;
@@ -16,6 +17,9 @@ interface PendingDecode {
   frame: Frame;
   resolve(frame: FilledFrame): void;
   reject(error: Error): void;
+  outcome?:
+    | { ok: true; response: Extract<DnxPacketWorkerResponse, { type: "decoded" }> }
+    | { ok: false; error: Error };
 }
 
 export class DnxDecoderWorkerPool {
@@ -23,8 +27,11 @@ export class DnxDecoderWorkerPool {
   private readonly slots: WorkerSlot[];
   private readonly pending = new Map<number, PendingDecode>();
   private nextRequestId = 1;
+  private nextSettlementId = 1;
   private queueSize = 0;
   private closed = false;
+  private closePromise: Promise<void> | null = null;
+  private drainResolve: (() => void) | null = null;
   private dequeuedResolve: (() => void) | null = null;
   private dequeuedPromise = new Promise<void>((resolve) => {
     this.dequeuedResolve = resolve;
@@ -102,8 +109,20 @@ export class DnxDecoderWorkerPool {
     });
   }
 
-  destroy(): void {
+  async close(): Promise<void> {
     if (this.closed) {
+      return this.closePromise ?? Promise.resolve();
+    }
+    this.closed = true;
+    this.closePromise = this.waitForDrain().then(() => {
+      this.terminateWorkers();
+    });
+    return this.closePromise;
+  }
+
+  destroy(): void {
+    if (this.closed && this.pending.size === 0) {
+      this.terminateWorkers();
       return;
     }
     this.closed = true;
@@ -112,18 +131,11 @@ export class DnxDecoderWorkerPool {
       pending.reject(error);
     }
     this.pending.clear();
-    for (const slot of this.slots) {
-      const request: DnxPacketWorkerRequest = { type: "close" };
-      try {
-        slot.worker.postMessage(request);
-      } catch {
-        // A failed worker may already have terminated.
-      } finally {
-        slot.worker.terminate();
-      }
-    }
+    this.terminateWorkers();
     this.queueSize = 0;
     this.signalDequeued();
+    this.drainResolve?.();
+    this.drainResolve = null;
   }
 
   private initializeSlot(slot: WorkerSlot, options: Required<DecoderOptions>): Promise<void> {
@@ -174,17 +186,14 @@ export class DnxDecoderWorkerPool {
       return;
     }
 
-    this.pending.delete(response.requestId);
     pending.slot.load -= 1;
-    this.queueSize -= 1;
     if (response.type === "decoded") {
       this.currentMode = `worker-pool/${response.mode}`;
-      populateFrame(pending.frame, response.frame);
-      pending.resolve(pending.frame as FilledFrame);
+      pending.outcome = { ok: true, response };
     } else {
-      pending.reject(new Error(response.message));
+      pending.outcome = { ok: false, error: new Error(response.message) };
     }
-    this.signalDequeued();
+    this.settleCompletedInOrder();
   }
 
   private failSlot(slot: WorkerSlot, error: Error): void {
@@ -197,12 +206,55 @@ export class DnxDecoderWorkerPool {
       if (pending.slot !== slot) {
         continue;
       }
-      this.pending.delete(requestId);
-      this.queueSize -= 1;
-      pending.reject(error);
+      pending.outcome = { ok: false, error };
     }
     slot.load = 0;
-    this.signalDequeued();
+    this.settleCompletedInOrder();
+  }
+
+  private settleCompletedInOrder(): void {
+    while (true) {
+      const pending = this.pending.get(this.nextSettlementId);
+      if (!pending?.outcome) {
+        break;
+      }
+      this.pending.delete(this.nextSettlementId);
+      this.nextSettlementId += 1;
+      this.queueSize -= 1;
+      if (pending.outcome.ok) {
+        populateFrame(pending.frame, pending.outcome.response.frame);
+        pending.resolve(pending.frame as FilledFrame);
+      } else {
+        pending.reject(pending.outcome.error);
+      }
+      this.signalDequeued();
+    }
+    if (this.queueSize === 0) {
+      this.drainResolve?.();
+      this.drainResolve = null;
+    }
+  }
+
+  private waitForDrain(): Promise<void> {
+    if (this.queueSize === 0) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      this.drainResolve = resolve;
+    });
+  }
+
+  private terminateWorkers(): void {
+    for (const slot of this.slots) {
+      const request: DnxPacketWorkerRequest = { type: "close" };
+      try {
+        slot.worker.postMessage(request);
+      } catch {
+        // A failed worker may already have terminated.
+      } finally {
+        slot.worker.terminate();
+      }
+    }
   }
 
   private signalDequeued(): void {
@@ -230,6 +282,7 @@ function transferablePacket(packetData: Uint8Array, transfer: boolean): Uint8Arr
 }
 
 function populateFrame(frame: Frame, contents: DnxWorkerFrameContents): void {
+  const metadata = dnxFrameMetadataForHeader(contents.header);
   frame.codedWidth = contents.codedWidth;
   frame.codedHeight = contents.codedHeight;
   frame.visibleWidth = contents.visibleWidth;
@@ -240,4 +293,10 @@ function populateFrame(frame: Frame, contents: DnxWorkerFrameContents): void {
   frame.header = contents.header;
   frame.layout = contents.layout;
   frame.frameData = contents.layout.planes[0].bytes;
+  frame.pixelAspectRatio = metadata.pixelAspectRatio;
+  frame.colorPrimaries = metadata.colorPrimaries;
+  frame.colorTransfer = metadata.colorTransfer;
+  frame.colorMatrix = metadata.colorMatrix;
+  frame.colorRangeFull = metadata.colorRangeFull;
+  frame.scanType = metadata.scanType;
 }

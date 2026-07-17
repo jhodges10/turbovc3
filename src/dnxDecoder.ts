@@ -1,9 +1,11 @@
 import type { DecodePixelFormat } from "./core/codec.js";
 import {
   DNX_SAMPLE_ENTRIES,
+  dnxFrameMetadataForHeader,
   parseDnxFrameHeader,
   type DnxFourCc,
-  type DnxFrameHeader
+  type DnxFrameHeader,
+  type DnxScanType
 } from "./dnxFrame.js";
 import {
   analyzeDnxPixelReconstruction,
@@ -21,6 +23,7 @@ export type DnxPixelFormat = Extract<
   DecodePixelFormat,
   | "yuv420p8"
   | "yuv420p10"
+  | "yuv420p12"
   | "yuv422p8"
   | "yuv422p10"
   | "yuv422p12"
@@ -114,12 +117,53 @@ export class Frame implements Disposable {
   pixelFormat: DnxPixelFormat | null = null;
   originalPixelFormat: DnxPixelFormat | null = null;
   colorSpace: DnxFrameHeader["colorSpace"] | null = null;
+  pixelAspectRatio: { num: number; den: number } | null = null;
+  colorPrimaries: number | null = null;
+  colorTransfer: number | null = null;
+  colorMatrix: number | null = null;
+  colorRangeFull: false | null = null;
+  scanType: DnxScanType | null = null;
   header: DnxFrameHeader | null = null;
   layout: DnxFrameLayout | null = null;
   private locked = false;
 
   get isLocked(): boolean {
     return this.locked;
+  }
+
+  get isFilled(): boolean {
+    return this.frameData !== null
+      && this.codedWidth !== null
+      && this.codedHeight !== null
+      && this.visibleWidth !== null
+      && this.visibleHeight !== null
+      && this.pixelFormat !== null
+      && this.originalPixelFormat !== null
+      && this.colorSpace !== null
+      && this.header !== null
+      && this.layout !== null
+      && this.pixelAspectRatio !== null
+      && this.colorPrimaries !== null
+      && this.colorTransfer !== null
+      && this.colorMatrix !== null
+      && this.colorRangeFull !== null
+      && this.scanType !== null;
+  }
+
+  toFilled(): FilledFrame | null {
+    return this.isFilled ? this as FilledFrame : null;
+  }
+
+  get colorPrimariesString(): string | undefined {
+    return this.colorPrimaries === 1 ? "bt709" : this.colorPrimaries === 9 ? "bt2020" : undefined;
+  }
+
+  get colorTransferString(): string | undefined {
+    return this.colorTransfer === 1 ? "bt709" : undefined;
+  }
+
+  get colorMatrixString(): string | undefined {
+    return this.colorMatrix === 1 ? "bt709" : this.colorMatrix === 9 ? "bt2020-ncl" : this.colorMatrix === 10 ? "bt2020-cl" : undefined;
   }
 
   acquireLock(): boolean {
@@ -146,6 +190,12 @@ export class Frame implements Disposable {
     this.pixelFormat = null;
     this.originalPixelFormat = null;
     this.colorSpace = null;
+    this.pixelAspectRatio = null;
+    this.colorPrimaries = null;
+    this.colorTransfer = null;
+    this.colorMatrix = null;
+    this.colorRangeFull = null;
+    this.scanType = null;
     this.header = null;
     this.layout = null;
   }
@@ -161,6 +211,7 @@ export class Decoder implements AsyncDisposable {
   readonly dnxFourCc: DnxFourCc;
   readonly allowedOutputFormats: readonly DnxPixelFormat[];
   private closed = false;
+  private closePromise: Promise<void> | null = null;
 
   private constructor(
     options: Required<DecoderOptions>,
@@ -280,6 +331,12 @@ export class Decoder implements AsyncDisposable {
         return new DnxInvalidDataError(`Packet sample entry ${header.fourCc} does not match decoder ${this.dnxFourCc}.`);
       }
 
+      if (header.expectedFrameSize !== null && packetData.byteLength < header.expectedFrameSize) {
+        return new DnxUnexpectedEofError(
+          `DNx packet ended after ${packetData.byteLength} bytes; CID ${header.cid} requires ${header.expectedFrameSize} bytes.`
+        );
+      }
+
       if (!header.supported) {
         return new DnxNotSupportedError(header.unsupportedReasons.join(" "));
       }
@@ -343,15 +400,20 @@ export class Decoder implements AsyncDisposable {
   }
 
   async close(): Promise<void> {
-    if (this.closed) {
-      return;
+    if (this.closePromise) {
+      return this.closePromise;
     }
 
     this.closed = true;
-    this.workerPool?.destroy();
-    this.sharedRowDecoder?.destroy();
-    this.rowDecoder?.destroy();
-    this.idctKernel?.destroy();
+    this.closePromise = (async () => {
+      await Promise.all([
+        this.workerPool?.close(),
+        this.sharedRowDecoder?.close()
+      ]);
+      this.rowDecoder?.destroy();
+      this.idctKernel?.destroy();
+    })();
+    return this.closePromise;
   }
 
   [Symbol.asyncDispose](): Promise<void> {
@@ -360,6 +422,7 @@ export class Decoder implements AsyncDisposable {
 }
 
 function populateFrameHeader(frame: Frame, header: DnxFrameHeader): void {
+  const metadata = dnxFrameMetadataForHeader(header);
   frame.header = header;
   frame.codedWidth = Math.ceil(header.width / 16) * 16;
   frame.codedHeight = Math.ceil(header.height / 16) * 16;
@@ -368,6 +431,12 @@ function populateFrameHeader(frame: Frame, header: DnxFrameHeader): void {
   frame.pixelFormat = header.pixelFormat as DnxPixelFormat;
   frame.originalPixelFormat = header.pixelFormat as DnxPixelFormat;
   frame.colorSpace = header.colorSpace;
+  frame.pixelAspectRatio = metadata.pixelAspectRatio;
+  frame.colorPrimaries = metadata.colorPrimaries;
+  frame.colorTransfer = metadata.colorTransfer;
+  frame.colorMatrix = metadata.colorMatrix;
+  frame.colorRangeFull = metadata.colorRangeFull;
+  frame.scanType = metadata.scanType;
 }
 
 function populateDecodedFrame(

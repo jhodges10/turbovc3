@@ -8,6 +8,7 @@ export type DecodePixelFormat =
   | "rgba16"
   | "yuv420p8"
   | "yuv420p10"
+  | "yuv420p12"
   | "yuv422p8"
   | "yuv422p10"
   | "yuv422p12"

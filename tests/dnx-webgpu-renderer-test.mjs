@@ -45,7 +45,7 @@ async function main() {
     };
     const frameGbr = makeFrame("gbrp10", 8, 4);
     for (const format of [
-      "yuv420p8", "yuv420p10", "yuv422p8", "yuv422p10", "yuv422p12",
+      "yuv420p8", "yuv420p10", "yuv420p12", "yuv422p8", "yuv422p10", "yuv422p12",
       "yuv444p8", "yuv444p10", "yuv444p12", "gbrp10", "gbrp12"
     ]) {
       assert.equal(module.DnxWebGpuRenderer.supports(makeFrame(format, 8, 4)), true);

@@ -5,6 +5,7 @@ import type { DnxFrameLayout } from "./dnxReconstruction.js";
 export type DnxConvertiblePixelFormat =
   | "yuv420p8"
   | "yuv420p10"
+  | "yuv420p12"
   | "yuv422p8"
   | "yuv422p10"
   | "yuv422p12"
@@ -216,7 +217,7 @@ function bitDepthForFormat(format: DnxPixelFormat): 8 | 10 | 12 | null {
   if (format === "yuv420p10" || format === "yuv422p10" || format === "yuv444p10") {
     return 10;
   }
-  if (format === "yuv422p12" || format === "yuv444p12") {
+  if (format === "yuv420p12" || format === "yuv422p12" || format === "yuv444p12") {
     return 12;
   }
   return null;
@@ -236,6 +237,7 @@ function isPlanarYuv(format: DnxPixelFormat): format is DnxConvertiblePixelForma
   return (
     format === "yuv420p8" ||
     format === "yuv420p10" ||
+    format === "yuv420p12" ||
     format === "yuv422p8" ||
     format === "yuv422p10" ||
     format === "yuv422p12" ||

@@ -69,7 +69,39 @@ const firstPacket = demuxer.packetsForTrack(videoTrack)[0];
 const encodedFrame = await demuxer.readPacket(firstPacket);
 ```
 
+`MxfDemuxer.open()` accepts an `AbortSignal`, progress callback, and configurable safety limits for metadata values,
+KLVs, tracks, packets, resynchronization work, and descriptor dimensions. Defaults are conservative for local media;
+remote or untrusted ingestion should lower them to the application’s actual envelope.
+
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
+
+For source-backed seeking without loading the complete MXF, use the random-access decoder. It keeps a bounded
+compressed-packet cache, can prefetch adjacent frames, reports indexing I/O, and coalesces rapid `seek()` calls so
+superseded queued targets are aborted before decode:
+
+```ts
+import { DnxRandomAccessDecoder } from "@jhodges10/turbovc3";
+
+const decoder = await DnxRandomAccessDecoder.create(file, {
+  packetCacheSize: 6,
+  prefetchFrames: 2,
+  signal: openAbortController.signal,
+  onIndexProgress: ({ offset, totalBytes, bytesRead }) => {
+    console.log({ offset, totalBytes, bytesRead });
+  }
+});
+if (decoder instanceof Error) throw decoder;
+
+const frame = await decoder.seek(120, { signal: seekAbortController.signal });
+if (frame instanceof Error) throw frame;
+console.log(frame.timestampUs, decoder.sourceBytesRead);
+
+await decoder.close();
+```
+
+`decode(index)` preserves every request. `seek(index)` is intended for scrubbing: it serializes decode work and
+returns an `AbortError` for targets superseded by a newer seek. Calling `close()` rejects new work and drains decode
+jobs already accepted by the underlying decoder.
 
 ## Supported scope
 
@@ -78,7 +110,7 @@ For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
 | Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR) |
 | Frames | Progressive through 4096×2160 |
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
-| Conversion | 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
+| Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
 | MXF | OP1a and OPAtom DNx essence; PCM track metadata and packet extraction |
 | Deferred | Interlaced/MBAFF, alpha, and a dedicated 12-bit 4:4:4 fixture |
@@ -113,6 +145,10 @@ The supported root surface contains:
 
 Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
 The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
+
+Worker-backed `Decoder.decode()` calls execute concurrently but their promises settle in submission order. A filled
+`Frame` exposes coded/visible dimensions, original and converted pixel formats, square-pixel bare-frame metadata,
+numeric color fields with WebCodecs-style string getters, range, scan type, `isFilled`, and `toFilled()`.
 
 ## Develop
 

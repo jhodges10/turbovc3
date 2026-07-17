@@ -6,6 +6,7 @@ const BUFFER_USAGE_COPY_DST_AND_UNIFORM = 0x08 | 0x40;
 type DnxWebGpuPixelFormat =
   | "yuv420p8"
   | "yuv420p10"
+  | "yuv420p12"
   | "yuv422p8"
   | "yuv422p10"
   | "yuv422p12"
@@ -295,6 +296,7 @@ function isDnxWebGpuPixelFormat(format: DecodeFrame["format"]): format is DnxWeb
   return (
     format === "yuv420p8" ||
     format === "yuv420p10" ||
+    format === "yuv420p12" ||
     format === "yuv422p8" ||
     format === "yuv422p10" ||
     format === "yuv422p12" ||
