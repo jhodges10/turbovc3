@@ -68,6 +68,14 @@ export interface DnxResolvedPlaneCopyLayout extends DnxPlaneCopyLayout {
   byteLength: number;
 }
 
+export interface DnxVideoFrameOptions {
+  timestamp: number;
+  duration?: number;
+  displayWidth?: number;
+  displayHeight?: number;
+  colorSpace?: VideoColorSpaceInit;
+}
+
 export type FilledFrame = {
   [K in keyof Frame]: NonNullable<Frame[K]>;
 };
@@ -221,6 +229,35 @@ export class Frame implements Disposable {
     return resolved;
   }
 
+  toVideoFrame(options: DnxVideoFrameOptions): VideoFrame {
+    if (typeof VideoFrame === "undefined") {
+      throw new DnxNotSupportedError("VideoFrame is not available in this runtime.");
+    }
+    const format = videoPixelFormat(this.pixelFormat);
+    if (!format) {
+      throw new DnxNotSupportedError(
+        `DNx pixel format ${this.pixelFormat ?? "unknown"} cannot be represented by a WebCodecs VideoFrame.`
+      );
+    }
+    const layout = this.copyLayout();
+    const data = videoFrameData(this, layout);
+    const visibleWidth = this.visibleWidth!;
+    const visibleHeight = this.visibleHeight!;
+    const aspect = this.pixelAspectRatio!;
+    return new VideoFrame(data, {
+      format,
+      codedWidth: this.codedWidth!,
+      codedHeight: this.codedHeight!,
+      visibleRect: { x: 0, y: 0, width: visibleWidth, height: visibleHeight },
+      displayWidth: options.displayWidth ?? Math.round(visibleWidth * aspect.num / aspect.den),
+      displayHeight: options.displayHeight ?? visibleHeight,
+      timestamp: options.timestamp,
+      duration: options.duration,
+      colorSpace: options.colorSpace ?? videoColorSpace(this),
+      layout: layout.map((plane) => ({ offset: plane.offset, stride: plane.stride }))
+    });
+  }
+
   get colorPrimariesString(): string | undefined {
     return this.colorPrimaries === 1 ? "bt709" : this.colorPrimaries === 9 ? "bt2020" : undefined;
   }
@@ -271,6 +308,44 @@ export class Frame implements Disposable {
   [Symbol.dispose](): void {
     this.clear();
   }
+}
+
+function videoFrameData(frame: Frame, layout: readonly DnxResolvedPlaneCopyLayout[]): Uint8Array {
+  const source = frame.layout!;
+  const first = source.planes[0]?.bytes;
+  const byteLength = frame.allocationSize(layout);
+  if (
+    first?.buffer instanceof ArrayBuffer &&
+    source.planes.every((plane, index) =>
+      plane.bytes.buffer === first.buffer &&
+      plane.bytes.byteOffset - first.byteOffset === layout[index].offset &&
+      plane.stride === layout[index].stride &&
+      plane.bytes.byteLength >= layout[index].byteLength
+    )
+  ) {
+    return new Uint8Array(first.buffer, first.byteOffset, byteLength);
+  }
+  const data = new Uint8Array(byteLength);
+  frame.copyTo(data, layout);
+  return data;
+}
+
+function videoPixelFormat(format: DnxPixelFormat | null): VideoPixelFormat | null {
+  switch (format) {
+    case "yuv420p8": return "I420";
+    case "yuv422p8": return "I422";
+    case "yuv444p8": return "I444";
+    default: return null;
+  }
+}
+
+function videoColorSpace(frame: Frame): VideoColorSpaceInit {
+  return {
+    primaries: frame.colorPrimariesString,
+    transfer: frame.colorTransferString,
+    matrix: frame.colorMatrixString,
+    fullRange: frame.colorRangeFull ?? false
+  } as VideoColorSpaceInit;
 }
 
 export class Decoder implements AsyncDisposable {

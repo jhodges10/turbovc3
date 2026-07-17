@@ -144,7 +144,8 @@ Initial performance target:
   luminance, GBR, 10-bit, and 12-bit paths.
 - [ ] Define tone-mapping behavior for HDR-tagged content instead of relying on the destination surface implicitly.
 - [x] Add frame-copy helpers with explicit strides, plane sizes, destination sizing, and overlap/range validation.
-- [ ] Investigate a `VideoFrame` or WebCodecs-style bridge while preserving the reusable planar `Frame` API.
+- [x] Add a `VideoFrame` bridge for portable 8-bit planar formats while preserving the reusable planar `Frame` API;
+  keep high-bit-depth and GBR output on explicit `copyTo()` layouts until WebCodecs standardizes those formats.
 - [x] Make GPU texture reuse, canvas resizing, device loss callbacks/state, and idempotent renderer teardown part of
   the public renderer contract.
 
