@@ -93,6 +93,30 @@ await playback.close();
 assert.equal(context.closeCalls, 0, "caller-owned AudioContext remains open");
 await assert.rejects(playback.start(), /closed/);
 
+const mono24Bytes = new Uint8Array(
+  await readFile(path.join(repoRoot, "tests/fixtures/dnxhr-lb-op1a-pcm24-mono-24fps-tc.mxf"))
+);
+const mono24Playback = await module.DnxAudioPlayback.createFromMxf(mono24Bytes, {
+  audioContext: context,
+  scheduleLeadTime: 0.05
+});
+assert.ok(mono24Playback);
+assert.deepEqual(mono24Playback.track, {
+  codec: "pcm_s24le",
+  sampleRate: 48000,
+  numberOfChannels: 1,
+  duration: 1 / 24
+});
+const mono24StartIndex = started.length;
+context.currentTime = 20;
+await mono24Playback.start(0);
+await waitFor(() => started.length === mono24StartIndex + 1);
+assert.equal(started[mono24StartIndex].source.buffer.numberOfChannels, 1);
+assert.equal(started[mono24StartIndex].source.buffer.length, 2000);
+assert.equal(started[mono24StartIndex].source.buffer.getChannelData(0)[0], 0);
+assert.equal(Math.abs(started[mono24StartIndex].source.buffer.getChannelData(0)[1]) > 0, true);
+await mono24Playback.close();
+
 const noAudio = await module.DnxAudioPlayback.createFromMxf(
   new Uint8Array(await readFile(path.join(repoRoot, "tests/fixtures/dnxhr-lb-opatom.mxf"))),
   { audioContext: context }

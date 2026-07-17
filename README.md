@@ -92,6 +92,9 @@ await audio?.start();
 KLVs, tracks, packets, resynchronization work, and descriptor dimensions. Defaults are conservative for local media;
 remote or untrusted ingestion should lower them to the application’s actual envelope.
 
+The committed OP1a contracts cover 16-bit stereo at 30 fps and 24-bit mono at 24 fps, including a non-zero source
+and material timecode. FFmpeg 8 only muxes 48 kHz MXF audio, so other MXF sample rates remain explicitly unverified.
+
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
 
 For source-backed seeking without loading the complete MXF, use the random-access decoder. It keeps a bounded
