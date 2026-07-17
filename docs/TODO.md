@@ -170,8 +170,8 @@ Initial performance target:
 - [ ] Track first-class DNx codec recognition in Mediabunny and remove the guarded track shim when the upstream API
   makes it unnecessary.
 - [ ] Propose or contribute upstream `AVdn`/`AVdh` recognition and a supported DNx extension registration path.
-- [ ] Add compatibility tests against the oldest supported and newest released Mediabunny versions.
-- [ ] Detect incompatible Mediabunny API changes with a clear setup error instead of failing during first decode.
+- [x] Add compatibility tests against the oldest supported and newest released Mediabunny versions.
+- [x] Detect incompatible Mediabunny API changes with a clear setup error instead of failing during first decode.
 - [ ] Revisit an official `@mediabunny/dnx` package only when ownership, release cadence, and compatibility contracts
   are agreed upstream.
 

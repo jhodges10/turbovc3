@@ -188,8 +188,11 @@ Node global or mutate runtime globals.
 See the [deployment and lifetime guide](docs/deployment.md) for Vite, Webpack, Next.js, CSP, COOP/COEP, asset-layout,
 and object-ownership details.
 
-Mediabunny `1.50.8` does not yet classify DNx as a native `VideoCodec`. Registration therefore installs a guarded
-compatibility shim that disables itself when a future Mediabunny release provides that support.
+Mediabunny is a peer dependency with the supported range `^1.50.8`. Version `1.50.8` does not yet classify DNx as a
+native `VideoCodec`, so registration installs a guarded compatibility shim that disables itself when a future
+Mediabunny release provides that support. `registerDnxDecoder()` checks every shimmed API up front and reports a clear
+compatibility error before changing Mediabunny state. CI compiles and decodes a real DNx sample with both `1.50.8` and
+the newest published Mediabunny release.
 
 ## Public API
 

@@ -46,6 +46,8 @@ All notable changes to turbovc3 will be documented here.
   the existing 30 fps stereo 16-bit contract.
 - DNxHD CID 1238 scalar/native dispatch and a required bit-exact FFmpeg oracle, completing the FFmpeg 8 progressive
   reference CID matrix.
+- Mediabunny oldest/latest compatibility CI plus an up-front registration check that names missing shim APIs and
+  leaves registration retry-safe after a rejected incompatible version.
 
 ### Changed
 

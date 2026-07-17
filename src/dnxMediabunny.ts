@@ -482,6 +482,39 @@ async function canDecodeDnxTrack(track: InputVideoTrack): Promise<boolean> {
 
 let registered = false;
 
+const REQUIRED_TRACK_SHIM_METHODS = [
+  "getInternalCodecId",
+  "getCodec",
+  "getDecoderConfig",
+  "getCodecParameterString",
+  "canDecode",
+  "hasOnlyKeyPackets",
+  "determinePacketType",
+  "getCodedWidth",
+  "getCodedHeight",
+  "getDisplayWidth",
+  "getDisplayHeight",
+  "getColorSpace"
+] as const;
+
+function assertMediabunnyCompatibility(): void {
+  if ((VIDEO_CODECS as readonly string[]).includes("dnx")) {
+    return;
+  }
+  const prototype = InputVideoTrack.prototype as unknown as Record<string, unknown>;
+  const missing: string[] = REQUIRED_TRACK_SHIM_METHODS.filter((name) => typeof prototype[name] !== "function");
+  const logging = Logging as typeof Logging & { _warn?: unknown };
+  if (typeof logging._warn !== "function") {
+    missing.push("Logging._warn");
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `Incompatible Mediabunny API: missing ${missing.join(", ")}. ` +
+      "turbovc3 currently supports Mediabunny ^1.50.8; update turbovc3 or use a compatible Mediabunny release."
+    );
+  }
+}
+
 /**
  * Registers the DNxHD/DNxHR decoder for automatic use by Mediabunny. Call this before starting a decoding task.
  */
@@ -489,9 +522,10 @@ export function registerDnxDecoder(): void {
   if (registered) {
     return;
   }
-  registered = true;
 
+  assertMediabunnyCompatibility();
   installDnxLoggingShim();
   installDnxTrackShim();
   registerDecoder(MediabunnyDnxDecoder);
+  registered = true;
 }
