@@ -12,6 +12,8 @@ All notable changes to turbovc3 will be documented here.
   contract, distribution tag, and tarball hash, plus versioned browser/runtime/security/fixture documentation.
 - A documented `0.x` compatibility policy and intended `1.0` boundary for the root, `/mxf`, and `/node` entry points.
 - A checksum-pinned fetch command for FFmpeg's public 12-bit CID 1271 HQX FATE sample and its strict extended oracle.
+- Genuine CID 1260 MBAFF decode with per-macroblock frame/field placement, fixed-profile width normalization, sample
+  aspect metadata, a checksum-pinned FFmpeg FATE oracle, and Mediabunny coverage.
 - Material-package compositions with nested Sequence/SourceClip traversal and source-package/track resolution, while
   preserving alternate edits for caller selection.
 - OP1a/OPAtom DNx adapter validation for required material compositions, resolvable DNx SourceClip references, and
@@ -51,7 +53,7 @@ All notable changes to turbovc3 will be documented here.
 - Deployment and lifetime guidance for bundlers, CSP, cross-origin isolation, assets, and owned resources.
 - Release-tag publication now gates on API reports plus Chromium, Firefox, WebKit, Deno, and Bun runtime tests.
 - Interlaced DNxHD CIDs 1241-1244 with two-field weaving, field-order metadata, and FFmpeg/native oracle coverage.
-- FFmpeg's experimental field-coded CID 1260 subset, while retaining explicit rejection for adaptive MBAFF packets.
+- FFmpeg's experimental field-coded CID 1260 subset.
 - Paired DNxHR 4:4:4 YUV/GBR oracles proving adaptive-color-transform selection and planar channel ordering.
 - Bit-exact committed FFmpeg oracles for DNxHD CIDs 1235/1237 and DNxHR LB/SQ/HQ CIDs 1274/1273/1272, completing
   required CI coverage for every progressive DNx profile FFmpeg 8 can emit.

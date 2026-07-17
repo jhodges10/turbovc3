@@ -30,9 +30,10 @@ Remaining parity work is intentionally not marked complete without codec fixture
   `@jhodges10/turbovc3/node`; Deno and Bun exercise direct ESM plus injected packet workers.
 - [x] Implement two-field interlaced DNxHD decode and field-order metadata for CIDs 1241-1244 across scalar, Zig/WASM,
   packet-worker, shared-memory fallback, and rendering-compatible planar output.
-- [x] Decode FFmpeg's experimental field-coded CID 1260 subset and keep adaptive-macroblock packets explicitly
-  unsupported.
-- [ ] Implement adaptive-macroblock MBAFF and add alpha/low-latency-alpha decode, rendering, and lifetime contracts.
+- [x] Decode FFmpeg's experimental field-coded CID 1260 subset.
+- [x] Implement adaptive-macroblock MBAFF entropy and field/frame block placement with a checksum-pinned FFmpeg FATE
+  oracle and Mediabunny contract.
+- [ ] Add alpha/low-latency-alpha decode, rendering, and lifetime contracts.
 - [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
 - [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.
 - [x] Add a reproducible local/CI-smoke benchmark report for synchronous/native decode, worker concurrency, retained
@@ -127,7 +128,8 @@ Initial performance target:
 
 - [x] Implement interlaced DNxHD CIDs 1241-1244 with top/bottom field weaving and FFmpeg-oracle coverage.
 - [x] Cover FFmpeg's experimental CID 1260 field-coded output with committed oracles.
-- [ ] Implement genuine CID 1260 MBAFF packets whose headers carry per-macroblock field-mode bits.
+- [x] Implement genuine CID 1260 MBAFF packets whose headers carry per-macroblock field-mode bits; normalize the
+  encoded 1920-wide header to the CID's 1440-pixel output and expose its 4:3 sample aspect ratio.
 - [x] Add field-order, field-height, line-placement, timing, and bob-deinterlacing integration tests.
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
@@ -146,7 +148,7 @@ Initial performance target:
 - [x] Reject unknown CIDs before decode even when their header dimensions, packet size, and pixel format otherwise
   resemble a supported VC-3 frame.
 - [x] Document the complete FFmpeg 8 reference CID matrix and distinguish implemented-but-external-oracle profiles
-  from explicitly rejected adaptive-MBAFF, alpha, low-latency-alpha, and unknown-CID inputs.
+  from explicitly rejected alpha, low-latency-alpha, and unknown-CID inputs.
 
 ## P1: Color and Frame Interoperability
 

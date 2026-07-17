@@ -312,7 +312,7 @@ function decodeDnxCodingUnit(
   backingBuffer?: ArrayBufferLike
 ): DnxScalarDecodeResult {
   const baseTables = CID_TABLES.get(header.cid);
-  if (!baseTables || header.mbaff || (header.is444 && header.bitDepth === 8)) {
+  if (!baseTables || (header.is444 && header.bitDepth === 8)) {
     throw new Error("Scalar decode does not support this DNx profile or coding mode.");
   }
   const tables = header.bitDepth === 12
@@ -324,9 +324,10 @@ function decodeDnxCodingUnit(
   const blocksPerMacroblock = header.is444 ? 12 : 8;
   const blocksPerRow = header.macroblockWidth * blocksPerMacroblock;
   const rowCoefficients = new Int32Array(blocksPerRow * 64);
+  const interlacedMacroblocks = header.mbaff ? new Uint8Array(header.macroblockWidth) : null;
   let macroblocksDecoded = 0;
 
-  if (rowDecoder) {
+  if (rowDecoder && !header.mbaff) {
     try {
       const frameBytes = rowDecoder.decodeFrame(
         packet,
@@ -363,7 +364,10 @@ function decodeDnxCodingUnit(
 
     for (let x = 0; x < header.macroblockWidth; x += 1) {
       try {
-        decodeMacroblock(state, rowCoefficients, x, header.is444);
+        const interlacedMacroblock = decodeMacroblock(state, rowCoefficients, x, header.is444, header.mbaff);
+        if (interlacedMacroblocks) {
+          interlacedMacroblocks[x] = interlacedMacroblock ? 1 : 0;
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(`DNx decode failed at row ${row.row}, macroblock ${x}: ${message}`);
@@ -373,7 +377,7 @@ function decodeDnxCodingUnit(
     const samples = idctKernel.transform(rowCoefficients, blocksPerRow, header.bitDepth);
 
     for (let x = 0; x < header.macroblockWidth; x += 1) {
-      putMacroblock(layout, x, row.row, samples, header.is444);
+      putMacroblock(layout, x, row.row, samples, header.is444, interlacedMacroblocks?.[x] === 1);
     }
   }
 
@@ -466,10 +470,17 @@ export function putDnxDecodedRow(
   }
 }
 
-function decodeMacroblock(state: RowState, rowCoefficients: Int32Array, mbX: number, is444: boolean): void {
-  const qscale = state.bits.readBits(11);
+function decodeMacroblock(
+  state: RowState,
+  rowCoefficients: Int32Array,
+  mbX: number,
+  is444: boolean,
+  mbaff: boolean
+): boolean {
+  const interlaced = mbaff ? state.bits.readBits(1) : 0;
+  const qscale = state.bits.readBits(mbaff ? 10 : 11);
   const act = state.bits.readBits(1);
-  if (qscale === null || act === null) {
+  if (interlaced === null || qscale === null || act === null) {
     throw new Error("Unexpected end of DNx macroblock header.");
   }
   if (act && !is444) {
@@ -495,6 +506,7 @@ function decodeMacroblock(state: RowState, rowCoefficients: Int32Array, mbX: num
       throw new Error(`block ${blockIndex}: ${message}`);
     }
   }
+  return interlaced === 1;
 }
 
 function decodeDctBlock(
@@ -602,30 +614,33 @@ function putMacroblock(
   mbX: number,
   mbY: number,
   rowSamples: Uint16Array,
-  is444: boolean
+  is444: boolean,
+  interlaced = false
 ): void {
+  const lineStep = interlaced ? 2 : 1;
+  const bottomY = mbY * 16 + (interlaced ? 1 : 8);
   if (is444) {
     const firstBlock = mbX * 12;
     for (let plane = 0; plane < 3; plane += 1) {
       const top = firstBlock + plane * 2;
       const bottom = firstBlock + 6 + plane * 2;
-      putLayoutBlock(layout, plane, mbX * 16, mbY * 16, rowSamples, top);
-      putLayoutBlock(layout, plane, mbX * 16 + 8, mbY * 16, rowSamples, top + 1);
-      putLayoutBlock(layout, plane, mbX * 16, mbY * 16 + 8, rowSamples, bottom);
-      putLayoutBlock(layout, plane, mbX * 16 + 8, mbY * 16 + 8, rowSamples, bottom + 1);
+      putLayoutBlock(layout, plane, mbX * 16, mbY * 16, rowSamples, top, lineStep);
+      putLayoutBlock(layout, plane, mbX * 16 + 8, mbY * 16, rowSamples, top + 1, lineStep);
+      putLayoutBlock(layout, plane, mbX * 16, bottomY, rowSamples, bottom, lineStep);
+      putLayoutBlock(layout, plane, mbX * 16 + 8, bottomY, rowSamples, bottom + 1, lineStep);
     }
     return;
   }
 
   const firstBlock = mbX * 8;
-  putLayoutBlock(layout, 0, mbX * 16, mbY * 16, rowSamples, firstBlock + 0);
-  putLayoutBlock(layout, 0, mbX * 16 + 8, mbY * 16, rowSamples, firstBlock + 1);
-  putLayoutBlock(layout, 0, mbX * 16, mbY * 16 + 8, rowSamples, firstBlock + 4);
-  putLayoutBlock(layout, 0, mbX * 16 + 8, mbY * 16 + 8, rowSamples, firstBlock + 5);
-  putLayoutBlock(layout, 1, mbX * 8, mbY * 16, rowSamples, firstBlock + 2);
-  putLayoutBlock(layout, 2, mbX * 8, mbY * 16, rowSamples, firstBlock + 3);
-  putLayoutBlock(layout, 1, mbX * 8, mbY * 16 + 8, rowSamples, firstBlock + 6);
-  putLayoutBlock(layout, 2, mbX * 8, mbY * 16 + 8, rowSamples, firstBlock + 7);
+  putLayoutBlock(layout, 0, mbX * 16, mbY * 16, rowSamples, firstBlock + 0, lineStep);
+  putLayoutBlock(layout, 0, mbX * 16 + 8, mbY * 16, rowSamples, firstBlock + 1, lineStep);
+  putLayoutBlock(layout, 0, mbX * 16, bottomY, rowSamples, firstBlock + 4, lineStep);
+  putLayoutBlock(layout, 0, mbX * 16 + 8, bottomY, rowSamples, firstBlock + 5, lineStep);
+  putLayoutBlock(layout, 1, mbX * 8, mbY * 16, rowSamples, firstBlock + 2, lineStep);
+  putLayoutBlock(layout, 2, mbX * 8, mbY * 16, rowSamples, firstBlock + 3, lineStep);
+  putLayoutBlock(layout, 1, mbX * 8, bottomY, rowSamples, firstBlock + 6, lineStep);
+  putLayoutBlock(layout, 2, mbX * 8, bottomY, rowSamples, firstBlock + 7, lineStep);
 }
 
 function putLayoutBlock(
@@ -634,10 +649,11 @@ function putLayoutBlock(
   x: number,
   y: number,
   samples: Uint16Array,
-  blockIndex: number
+  blockIndex: number,
+  lineStep = 1
 ): void {
   const plane = layout.planes[planeIndex];
-  putBlock(plane.bytes, plane.stride, layout.bytesPerSample, x, y, samples, blockIndex * 64);
+  putBlock(plane.bytes, plane.stride, layout.bytesPerSample, x, y, samples, blockIndex * 64, lineStep);
 }
 
 function putBlock(
@@ -647,15 +663,16 @@ function putBlock(
   x: number,
   y: number,
   samples: Uint16Array,
-  sampleOffset: number
+  sampleOffset: number,
+  lineStep: number
 ): void {
   for (let row = 0; row < 8; row += 1) {
     for (let column = 0; column < 8; column += 1) {
       const sample = samples[sampleOffset + row * 8 + column];
       if (bytesPerSample === 1) {
-        target[(y + row) * stride + x + column] = sample;
+        target[(y + row * lineStep) * stride + x + column] = sample;
       } else {
-        const offset = (y + row) * stride + (x + column) * 2;
+        const offset = (y + row * lineStep) * stride + (x + column) * 2;
         target[offset] = sample & 0xff;
         target[offset + 1] = sample >> 8;
       }

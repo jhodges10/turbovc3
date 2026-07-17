@@ -502,7 +502,7 @@ export class Decoder implements AsyncDisposable {
         );
       }
 
-      if (this.sharedRowDecoder && !header.interlaced) {
+      if (this.sharedRowDecoder && !header.interlaced && !header.mbaff) {
         try {
           const decoded = await this.sharedRowDecoder.decode(
             packetData,
@@ -539,7 +539,7 @@ export class Decoder implements AsyncDisposable {
             packetData,
             header,
             this.idctKernel ?? undefined,
-            this.rowDecoder,
+            header.mbaff ? null : this.rowDecoder,
             backingBuffer
           );
           const layout = convertDnxFrameLayout(decoded.layout, sourcePixelFormat, outputPixelFormat, header.colorSpace);

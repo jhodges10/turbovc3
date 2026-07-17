@@ -276,6 +276,8 @@ export interface DnxFrameHeader {
     // (undocumented)
     dataOffset: number;
     // (undocumented)
+    encodedWidth: number;
+    // (undocumented)
     expectedFrameSize: number | null;
     // (undocumented)
     fieldHeight: number;
@@ -297,6 +299,11 @@ export interface DnxFrameHeader {
     macroblockWidth: number;
     // (undocumented)
     mbaff: boolean;
+    // (undocumented)
+    pixelAspectRatio: {
+        num: number;
+        den: number;
+    };
     // (undocumented)
     pixelFormat: DecodePixelFormat;
     // (undocumented)

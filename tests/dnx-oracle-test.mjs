@@ -248,6 +248,22 @@ const supportedFixtures = [
       pixelFormat: "yuv422p12",
       frameCount: 1
     }
+  },
+  {
+    name: "dnxhd-1440x1080-8bit-cid1260-mbaff-fate",
+    output: path.join(fixtureDir, "oracle_fate_dnxhd100_cid1260.mov"),
+    generate: false,
+    expected: {
+      cid: 1260,
+      profile: "dnxhd",
+      width: 1440,
+      encodedWidth: 1920,
+      height: 1080,
+      pixelFormat: "yuv422p8",
+      pixelAspectRatio: { num: 4, den: 3 },
+      mbaff: true,
+      frameCount: 1
+    }
   }
 ];
 
@@ -339,7 +355,8 @@ async function main() {
     { name: "dnxhr-lb-1080p30-8bit-cid1274", fourCc: "AVdh", format: "I422" },
     { name: "dnxhr-hqx-1080p30-10bit-cid1271", fourCc: "AVdh", format: "I422P10" },
     { name: "dnxhr-444-1080p30-10bit-cid1270", fourCc: "AVdh", format: "I444P10" },
-    { name: "dnxhr-hqx-1080p-12bit-cid1271-fate", fourCc: "AVdh", format: "I422P12" }
+    { name: "dnxhr-hqx-1080p-12bit-cid1271-fate", fourCc: "AVdh", format: "I422P12" },
+    { name: "dnxhd-1440x1080-8bit-cid1260-mbaff-fate", fourCc: "AVdn", format: "I422" }
   ]) {
     const extensionFixture = presentSupported.find((fixture) => fixture.name === extensionCase.name);
     if (extensionFixture) {
@@ -478,8 +495,21 @@ async function runOracleComparison(decoder, fixture) {
       : null;
     assertEqual(decoded.header.cid, fixture.expected.cid, `${fixture.name} CID`);
     assertEqual(decoded.header.width, fixture.expected.width, `${fixture.name} width`);
+    if (fixture.expected.encodedWidth !== undefined) {
+      assertEqual(decoded.header.encodedWidth, fixture.expected.encodedWidth, `${fixture.name} encoded width`);
+    }
     assertEqual(decoded.header.height, fixture.expected.height, `${fixture.name} height`);
     assertEqual(decoded.header.pixelFormat, fixture.expected.pixelFormat, `${fixture.name} pixel format`);
+    if (fixture.expected.mbaff !== undefined) {
+      assertEqual(decoded.header.mbaff, fixture.expected.mbaff, `${fixture.name} MBAFF mode`);
+    }
+    if (fixture.expected.pixelAspectRatio !== undefined) {
+      assertEqual(
+        JSON.stringify(decoded.header.pixelAspectRatio),
+        JSON.stringify(fixture.expected.pixelAspectRatio),
+        `${fixture.name} pixel aspect ratio`
+      );
+    }
     if (fixture.expected.adaptiveColorTransform !== undefined) {
       assertEqual(
         decoded.header.adaptiveColorTransform,
@@ -676,16 +706,17 @@ function runSyntheticHeaderTests(decoder) {
   assertEqual(fieldCoded1260?.supported, true, "field-coded CID 1260 should be supported");
   const adaptive1260 = decoder.parseSyntheticHeader({
     cid: 1260,
-    width: 1440,
-    height: 540,
+    width: 1920,
+    height: 1080,
     bitDepthIndicator: 1,
-    interlaced: true,
     mbaff: true,
-    macroblockHeight: 34,
-    packetLength: 835584
+    macroblockHeight: 68,
+    packetLength: 417792
   });
-  assertEqual(adaptive1260?.supported, false, "adaptive MBAFF CID 1260 should remain unsupported");
-  assertEqual(adaptive1260?.unsupportedReasons.includes("MBAFF DNx output is deferred."), true, "MBAFF reason");
+  assertEqual(adaptive1260?.supported, true, "adaptive MBAFF CID 1260 should be supported");
+  assertEqual(adaptive1260?.encodedWidth, 1920, "MBAFF encoded width");
+  assertEqual(adaptive1260?.width, 1440, "MBAFF CID-normalized width");
+  assertEqual(JSON.stringify(adaptive1260?.pixelAspectRatio), JSON.stringify({ num: 4, den: 3 }), "MBAFF sample aspect ratio");
   console.log("synthetic header tests passed");
 }
 
@@ -863,7 +894,9 @@ async function loadBundledDecoder() {
         rowsDecoded: decoded.rowsDecoded,
         macroblocksDecoded: decoded.macroblocksDecoded,
         elapsedMs,
-        idctMode: rowDecoder?.mode ?? idctKernel?.mode ?? "typescript-idct",
+        idctMode: rowDecoder && !packet.header.mbaff
+          ? rowDecoder.mode
+          : idctKernel?.mode ?? "typescript-idct",
         bytesPerSample,
         visibleBytes
       };
