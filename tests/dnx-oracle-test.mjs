@@ -50,6 +50,14 @@ const supportedFixtures = [
     expected: { cid: 1244, width: 1440, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
   },
   {
+    name: "dnxhd-1440x1080i2997-8bit-cid1260",
+    output: path.join(fixtureDir, "oracle_dnxhd_1440x1080i2997_8bit_cid1260.mxf"),
+    vf: "scale=1440:1080,setfield=tff,format=yuv422p",
+    bitrate: "80M",
+    strict: "-2",
+    expected: { cid: 1260, width: 1440, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
     name: "dnxhd-720p30-10bit-cid1250",
     output: path.join(fixtureDir, "oracle_dnxhd_720p30_10bit_cid1250.mxf"),
     vf: "fps=30,scale=1280:720,format=yuv422p10le",
@@ -394,6 +402,7 @@ function generateFixture(fixture) {
     "-vf", fixture.vf,
     "-frames:v", String(frames),
     ...codecArgs,
+    ...(fixture.strict ? ["-strict", fixture.strict] : []),
     "-an",
     fixture.output
   ];
@@ -618,6 +627,28 @@ function runSyntheticHeaderTests(decoder) {
   assertEqual(supportedInterlaced?.supported, true, "CID 1241 interlaced DNxHD should be supported");
   assertEqual(supportedInterlaced?.height, 1080, "CID 1241 display height");
   assertEqual(supportedInterlaced?.fieldHeight, 540, "CID 1241 field height");
+  const fieldCoded1260 = decoder.parseSyntheticHeader({
+    cid: 1260,
+    width: 1440,
+    height: 540,
+    bitDepthIndicator: 1,
+    interlaced: true,
+    macroblockHeight: 34,
+    packetLength: 835584
+  });
+  assertEqual(fieldCoded1260?.supported, true, "field-coded CID 1260 should be supported");
+  const adaptive1260 = decoder.parseSyntheticHeader({
+    cid: 1260,
+    width: 1440,
+    height: 540,
+    bitDepthIndicator: 1,
+    interlaced: true,
+    mbaff: true,
+    macroblockHeight: 34,
+    packetLength: 835584
+  });
+  assertEqual(adaptive1260?.supported, false, "adaptive MBAFF CID 1260 should remain unsupported");
+  assertEqual(adaptive1260?.unsupportedReasons.includes("MBAFF DNx output is deferred."), true, "MBAFF reason");
   console.log("synthetic header tests passed");
 }
 
@@ -941,6 +972,9 @@ async function loadBundledDecoder() {
       bytes[4] = options.is444 ? 0x02 : 0x01;
       if (options.interlaced) {
         bytes[5] |= 0x02;
+      }
+      if (options.mbaff) {
+        bytes[6] |= 0x20;
       }
       writeU16BE(bytes, 0x18, options.height);
       writeU16BE(bytes, 0x1a, options.width);

@@ -30,7 +30,9 @@ Remaining parity work is intentionally not marked complete without codec fixture
   `@jhodges10/turbovc3/node`; Deno and Bun exercise direct ESM plus injected packet workers.
 - [x] Implement two-field interlaced DNxHD decode and field-order metadata for CIDs 1241-1244 across scalar, Zig/WASM,
   packet-worker, shared-memory fallback, and rendering-compatible planar output.
-- [ ] Implement MBAFF and add alpha/low-latency-alpha decode, rendering, and lifetime contracts.
+- [x] Decode FFmpeg's experimental field-coded CID 1260 subset and keep adaptive-macroblock packets explicitly
+  unsupported.
+- [ ] Implement adaptive-macroblock MBAFF and add alpha/low-latency-alpha decode, rendering, and lifetime contracts.
 - [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
 - [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.
 
@@ -110,7 +112,8 @@ Initial performance target:
 ## P1: Codec Coverage
 
 - [x] Implement interlaced DNxHD CIDs 1241-1244 with top/bottom field weaving and FFmpeg-oracle coverage.
-- [ ] Implement MBAFF CID 1260.
+- [x] Cover FFmpeg's experimental CID 1260 field-coded output with committed oracles.
+- [ ] Implement genuine CID 1260 MBAFF packets whose headers carry per-macroblock field-mode bits.
 - [ ] Add field-order, field-height, line-placement, timing, and deinterlacing integration tests.
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
