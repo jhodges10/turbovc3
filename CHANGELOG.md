@@ -25,6 +25,8 @@ All notable changes to turbovc3 will be documented here.
   real Canvas2D pixel reads in all three browser engines.
 - `DnxAudioPlayback.createFromMxf()` for BWF-style little-endian 16/24/32-bit PCM packet playback with descriptor
   sample-rate/channel metadata and the existing play, pause, seek, and clock contract.
+- A reusable `DnxPlaybackClock`, also exposed as `DnxAudioPlayback.clock`, for synchronizing video presentation to
+  the Web Audio timebase.
 
 ### Changed
 

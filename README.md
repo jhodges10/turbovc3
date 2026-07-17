@@ -76,6 +76,7 @@ import { DnxAudioPlayback } from "@jhodges10/turbovc3";
 
 const audio = await DnxAudioPlayback.createFromMxf(demuxer);
 await audio?.start();
+// Use audio.clock.currentTime as the authoritative video presentation time.
 ```
 
 `MxfDemuxer.open()` accepts an `AbortSignal`, progress callback, and configurable safety limits for metadata values,
