@@ -219,6 +219,7 @@ The supported root surface contains:
 - `registerDnxDecoder()` and container inspection helpers
 - `Decoder`, `Frame`, their options, results, and typed decoder errors
 - DNx frame-header inspection helpers and types
+- `deinterlaceDnxFrameLayout()` for explicit top- or bottom-field bob presentation
 - `DnxAudioPlayback`, `DnxRandomAccessDecoder`, `DnxCanvasRenderer`, and `DnxWebGpuRenderer`
 - `demuxDnxMxf()`, `isMxfFile()`, and MXF adapter types
 
@@ -235,6 +236,9 @@ Worker-backed `Decoder.decode()` calls execute concurrently but their promises s
 numeric color fields with WebCodecs-style string getters, range, scan type, `isFilled`, and `toFilled()`.
 Use `copyLayout()`, `allocationSize()`, and `copyTo()` to copy coded plane rows into tightly packed or explicitly
 offset/strided destination storage; layouts are range-checked and may not overlap.
+Interlaced decodes remain woven by default. Pass the filled frame's `layout` and the desired `"top"` or `"bottom"`
+field to `deinterlaceDnxFrameLayout()` when a full-height bobbed presentation frame is appropriate; the helper
+returns an independent tightly packed layout and does not alter the reusable decoder frame.
 `DnxCanvasRenderer` is the portable Canvas2D fallback; `DnxWebGpuRenderer.create()` returns `null` when WebGPU is
 unavailable so applications can select the fallback explicitly.
 Both renderers expose `isDestroyed`; the WebGPU renderer also exposes `isDeviceLost` and an `onDeviceLost` callback.

@@ -62,6 +62,31 @@ const validInterlaced = await interlacedDecoder.decode(interlacedSeed, new modul
 assert.equal(validInterlaced instanceof Error, false);
 assert.equal(validInterlaced.scanType, "interlaced-top-field-first");
 assert.equal(validInterlaced.visibleHeight, 1080);
+assert.equal(interlacedMxf.packets[0].timestampUs, 0);
+assert.equal(interlacedMxf.packets[0].durationUs, 33367);
+const topHeader = module.parseDnxFrameHeader(interlacedSeed.subarray(0, codingUnitSize));
+const bottomHeader = module.parseDnxFrameHeader(interlacedSeed.subarray(codingUnitSize));
+assert.equal(topHeader?.fieldHeight, 540);
+assert.equal(topHeader?.fieldParity, "top");
+assert.equal(bottomHeader?.fieldHeight, 540);
+assert.equal(bottomHeader?.fieldParity, "bottom");
+for (const parity of ["top", "bottom"]) {
+  const bobbed = module.deinterlaceDnxFrameLayout(validInterlaced.layout, parity);
+  const parityOffset = parity === "top" ? 0 : 1;
+  for (let planeIndex = 0; planeIndex < bobbed.planes.length; planeIndex += 1) {
+    const source = validInterlaced.layout.planes[planeIndex];
+    const output = bobbed.planes[planeIndex];
+    const fieldLineCount = Math.ceil((source.height - parityOffset) / 2);
+    for (let row = 0; row < output.height; row += 1) {
+      const expectedRow = Math.min(fieldLineCount - 1, Math.floor(row / 2)) * 2 + parityOffset;
+      assert.deepEqual(
+        output.bytes.subarray(row * output.stride, (row + 1) * output.stride),
+        source.bytes.subarray(expectedRow * source.stride, expectedRow * source.stride + output.stride),
+        `${parity} field plane ${planeIndex} row ${row}`
+      );
+    }
+  }
+}
 
 const corruptSecondHeader = interlacedSeed.slice();
 corruptSecondHeader[codingUnitSize] ^= 0xff;
@@ -126,6 +151,8 @@ async function loadModule() {
       contents: `
         export { Decoder, Frame } from ${JSON.stringify(path.join(repoRoot, "src/dnxDecoder.ts"))};
         export { demuxDnxMxf } from ${JSON.stringify(path.join(repoRoot, "src/dnxMxf.ts"))};
+        export { parseDnxFrameHeader } from ${JSON.stringify(path.join(repoRoot, "src/dnxFrame.ts"))};
+        export { deinterlaceDnxFrameLayout } from ${JSON.stringify(path.join(repoRoot, "src/dnxPixelConversion.ts"))};
         export { createDnxFrameLayout } from ${JSON.stringify(path.join(repoRoot, "src/dnxReconstruction.ts"))};
       `,
       resolveDir: repoRoot,

@@ -127,6 +127,9 @@ export interface DecoderOptions {
     workerFactory?: DnxWorkerFactory;
 }
 
+// @public
+export function deinterlaceDnxFrameLayout(source: DnxFrameLayout, parity: DnxFieldParity): DnxFrameLayout;
+
 // @public (undocumented)
 export function demuxDnxMxf(input: MxfSourceInput, options?: MxfDemuxOptions): Promise<DnxMxfDemuxResult | null>;
 
@@ -255,6 +258,9 @@ export class DnxDecoderClosedError extends DnxDecoderError {
 export class DnxDecoderError extends Error {
     constructor(message: string);
 }
+
+// @public (undocumented)
+export type DnxFieldParity = "top" | "bottom";
 
 // @public (undocumented)
 export type DnxFourCc = (typeof DNX_SAMPLE_ENTRIES)[number];
