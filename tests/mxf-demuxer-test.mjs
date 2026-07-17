@@ -12,6 +12,7 @@ const module = await loadMxfModule();
 
 await testSyntheticKlv(module);
 await testSyntheticMalformedKlv(module);
+testTimecodeFormatting(module);
 await testLazyDnxAdapter(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testStructuralMutations(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testFixture(module, "samples/wip_gallery_page_1920x1080_60fps.mxf", {
@@ -36,6 +37,7 @@ await testFixture(module, "samples/mxf_demux_opatom_dnx.mxf", {
   operationalPattern: "060e2b34040101020d01020110030000"
 });
 await testAudioVideoFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf", 1);
+await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
   width: 1280,
   height: 720,
@@ -43,6 +45,7 @@ await testFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf", {
   frameRate: 30,
   operationalPattern: "060e2b34040101020d01020110030000"
 });
+await testTimecodeFixture(module, "tests/fixtures/dnxhr-lb-opatom.mxf");
 
 console.log("MXF demuxer contracts passed.");
 
@@ -242,6 +245,60 @@ async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 
     assert.equal(demuxer.packetsForTrack(audio)[1].timestampUs, 33333);
   }
   console.log(`${relativePath}: video and audio tracks resolved`);
+}
+
+async function testTimecodeFixture(module, relativePath) {
+  const bytes = new Uint8Array(await readFile(path.join(repoRoot, relativePath)));
+  const demuxer = await module.MxfDemuxer.open(bytes);
+  assert.equal(demuxer.timecodeTracks.length, 2);
+  assert.deepEqual(demuxer.timecodeTracks.map((track) => track.packageKind), ["material", "source"]);
+  for (const track of demuxer.timecodeTracks) {
+    assert.equal(track.packageUid?.length, 64);
+    assert.equal(track.editRate.numerator, 30);
+    assert.equal(track.editRate.denominator, 1);
+    assert.equal(track.duration, 1);
+    assert.equal(track.startTimecode, 0);
+    assert.equal(track.roundedTimecodeBase, 30);
+    assert.equal(track.dropFrame, false);
+    assert.deepEqual(demuxer.timecodeAt(track, 0), {
+      frameNumber: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      frames: 0,
+      dropFrame: false,
+      formatted: "00:00:00:00"
+    });
+  }
+}
+
+function testTimecodeFormatting(module) {
+  const track = {
+    packageKind: "material",
+    packageUid: null,
+    packageInstanceUid: null,
+    trackId: 1,
+    name: null,
+    editRate: { numerator: 30_000, denominator: 1_001 },
+    origin: 0,
+    duration: null,
+    startTimecode: 0,
+    roundedTimecodeBase: 30,
+    dropFrame: true
+  };
+  assert.equal(module.mxfTimecodeAtEditUnit(track, 1_799).formatted, "00:00:59;29");
+  assert.equal(module.mxfTimecodeAtEditUnit(track, 1_800).formatted, "00:01:00;02");
+  assert.equal(module.mxfTimecodeAtEditUnit(track, 17_982).formatted, "00:10:00;00");
+  assert.equal(module.mxfTimecodeAtEditUnit(track, -1).formatted, "23:59:59;29");
+  assert.equal(
+    module.mxfTimecodeAtEditUnit({ ...track, dropFrame: false }, -1).formatted,
+    "23:59:59:29"
+  );
+  assert.throws(() => module.mxfTimecodeAtEditUnit(track, 0.5), /safe integer/);
+  assert.throws(
+    () => module.mxfTimecodeAtEditUnit({ ...track, roundedTimecodeBase: 25 }, 0),
+    /base of 30 or 60/
+  );
 }
 
 async function testSyntheticKlv(module) {

@@ -149,7 +149,8 @@ Initial performance target:
 - [ ] Support variable-byte-count clip wrapping when index entry offsets are present and reject ambiguous layouts
   deterministically.
 - [ ] Improve package/sequence/source-clip resolution for files with multiple material packages and source packages.
-- [ ] Expose timecode tracks and a stable API for mapping edit units to source and material timecode.
+- [x] Expose material/source timecode tracks and a stable edit-unit mapping API with ordinary and drop-frame
+  formatting, origins, duration, edit rates, and 24-hour wrapping.
 - [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.
 - [ ] Validate operational-pattern-specific structural requirements beyond the current OP1a/OPAtom fixtures.
 - [ ] Add fixtures from FFmpeg, Avid, Adobe, Resolve, and other generators where licensing permits redistribution.
