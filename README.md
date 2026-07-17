@@ -253,6 +253,7 @@ Native development additionally requires Zig `0.16.0` and Emscripten `6.0.2`:
 ```sh
 npm run build:wasm
 npm run test:native
+npm run test:native:sanitizers
 REQUIRE_WASM_ASSETS=1 npm run test:package
 ```
 

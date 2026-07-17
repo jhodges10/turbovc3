@@ -58,6 +58,7 @@ All notable changes to turbovc3 will be documented here.
   and every converted output plane stride across 4:2:0, 4:2:2, and 4:4:4 layouts.
 - A versioned Zig/WASM capacity contract for packet, row, frame, macroblock-width, and row-count limits, with
   JavaScript-side rejection before native memory access and maximum-envelope tests.
+- Native C IDCT ASan/UBSan coverage and Debug-mode Zig safety tests, including oversized-argument arithmetic checks.
 
 ### Changed
 
@@ -71,6 +72,8 @@ All notable changes to turbovc3 will be documented here.
 - Shared-row decoding reuses its packet allocation and retains output allocations across reuse of the same `Frame`.
 - Synchronous scalar and Zig frame decoding now retain compatible output allocations when a `Frame` is reused.
 - 12-bit planar GBR reconstruction now labels its planes G/B/R consistently with the 10-bit path.
+- Zig frame-size arithmetic now validates bounded dimensions before using widened size calculations.
+- The standalone C IDCT export ignores null buffers and invalid bit depths before performing pointer access or shifts.
 - Decoder teardown rejects new work and drains accepted decode/source operations before terminating workers.
 - Truncated packets with valid DNx headers now report `DnxUnexpectedEofError` instead of a capability error.
 - Published worker modules use direct-ESM-compatible `.js` specifiers.

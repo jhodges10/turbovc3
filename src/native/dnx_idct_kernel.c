@@ -22,6 +22,8 @@ static int32_t dnx_clip_sample(int32_t value, uint32_t bit_depth) {
 void dnx_idct_i32_blocks(const int32_t* coeffs, uint16_t* samples, uint32_t block_count, uint32_t bit_depth) {
   double scratch[64];
 
+  if (coeffs == 0 || samples == 0 || (bit_depth != 8 && bit_depth != 10 && bit_depth != 12)) return;
+
   for (uint32_t block = 0; block < block_count; block += 1) {
     const int32_t* block_coeffs = coeffs + block * 64;
     uint16_t* block_samples = samples + block * 64;

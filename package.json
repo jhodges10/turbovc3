@@ -69,6 +69,7 @@
     "test:browser": "playwright test",
     "test:runtimes": "deno run --allow-read tests/runtime-worker-smoke.mjs && bun tests/runtime-worker-smoke.mjs",
     "test:native": "node tests/dnx-wasm-kernel-test.mjs && node tests/dnx-zig-capacity-test.mjs && node tests/committed-fixtures-test.mjs --require-native",
+    "test:native:sanitizers": "bash scripts/test-native-sanitizers.sh",
     "test:package": "node tests/package-smoke-test.mjs",
     "test:benchmark": "npm run build && node tests/benchmark-smoke-test.mjs",
     "bench:decode": "npm run build && node benchmarks/decode.mjs"
