@@ -109,7 +109,8 @@ Initial performance target:
 - [ ] Implement interlaced DNxHD and MBAFF, beginning with CIDs 1241-1244 and 1260.
 - [ ] Add field-order, field-height, line-placement, timing, and deinterlacing integration tests.
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
-- [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage.
+- [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
+  8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
 - [ ] Expand the CID fixture matrix for currently declared DNxHD CIDs, especially 1250, 1252, 1253, 1256, 1258,
   and 1259.
 - [ ] Verify adaptive color transform behavior across scalar, Zig/WASM, Mediabunny, and WebGPU paths.
