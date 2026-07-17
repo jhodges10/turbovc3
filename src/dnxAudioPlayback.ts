@@ -9,6 +9,7 @@ import { MxfDemuxer } from "./mxf/mxfDemuxer.js";
 import type { MxfPacket, MxfTrack } from "./mxf/mxfTypes.js";
 import type { MxfSourceInput } from "./mxf/mxfSource.js";
 import { DnxPlaybackClock } from "./dnxPlaybackClock.js";
+import { DnxNotSupportedError } from "./dnxDecoder.js";
 
 export interface DnxAudioPlaybackOptions {
   audioContext?: AudioContext;
@@ -124,10 +125,14 @@ export class DnxAudioPlayback implements AsyncDisposable {
     const ownsContext = !options.audioContext;
     try {
       const demuxer = input instanceof MxfDemuxer ? input : await MxfDemuxer.open(input);
-      const track = demuxer.tracks.find((candidate) => candidate.kind === "audio");
-      if (!track || !isSupportedMxfPcmTrack(track)) {
+      const audioTracks = demuxer.tracks.filter((candidate) => candidate.kind === "audio");
+      if (audioTracks.length === 0) {
         if (ownsContext) await context.close();
         return null;
+      }
+      const track = audioTracks.find(isSupportedMxfPcmTrack);
+      if (!track) {
+        throw new DnxNotSupportedError(describeUnsupportedMxfAudio(audioTracks));
       }
       const packets = demuxer.packetsForTrack(track);
       if (packets.length === 0) {
@@ -356,6 +361,27 @@ function isSupportedMxfPcmTrack(track: MxfTrack): boolean {
     channels > 0 &&
     (bitsPerSample === 16 || bitsPerSample === 24 || bitsPerSample === 32) &&
     essenceContainer?.startsWith("060e2b34040101010d0103010206")
+  );
+}
+
+function describeUnsupportedMxfAudio(tracks: readonly MxfTrack[]): string {
+  const details = tracks.map((track) => {
+    const descriptor = track.descriptor;
+    const sampleRate = descriptor?.sampleRate
+      ? descriptor.sampleRate.numerator / descriptor.sampleRate.denominator
+      : null;
+    return [
+      `track ${track.id}`,
+      descriptor?.essenceContainerUl ? `essence ${descriptor.essenceContainerUl}` : "unknown essence",
+      descriptor?.bitsPerSample ? `${descriptor.bitsPerSample}-bit` : "unknown bit depth",
+      sampleRate ? `${sampleRate} Hz` : "unknown sample rate",
+      descriptor?.channels ? `${descriptor.channels} channel${descriptor.channels === 1 ? "" : "s"}` : "unknown channels"
+    ].join(", ");
+  });
+  return (
+    "MXF audio tracks are present, but none use supported little-endian 16/24/32-bit PCM: " +
+    details.join("; ") +
+    "."
   );
 }
 

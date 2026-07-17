@@ -47,6 +47,8 @@ All notable changes to turbovc3 will be documented here.
 
 ### Changed
 
+- MXF audio creation now returns `null` only when audio is absent; present but unsupported tracks throw a detailed
+  `DnxNotSupportedError` instead of silently appearing as a file with no audio.
 - Packet-worker decode promises now settle in submission order while retaining concurrent execution.
 - Shared-row decoding reuses its packet allocation and retains output allocations across reuse of the same `Frame`.
 - Decoder teardown rejects new work and drains accepted decode/source operations before terminating workers.

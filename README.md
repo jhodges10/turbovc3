@@ -94,6 +94,8 @@ remote or untrusted ingestion should lower them to the application’s actual en
 
 The committed OP1a contracts cover 16-bit stereo at 30 fps and 24-bit mono at 24 fps, including a non-zero source
 and material timecode. FFmpeg 8 only muxes 48 kHz MXF audio, so other MXF sample rates remain explicitly unverified.
+`DnxAudioPlayback.createFromMxf()` returns `null` for files without audio and throws `DnxNotSupportedError` when
+audio tracks exist but none use the supported little-endian 16/24/32-bit PCM layout.
 
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
 
