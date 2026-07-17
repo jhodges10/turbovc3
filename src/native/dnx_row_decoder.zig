@@ -105,11 +105,19 @@ const BitReader = struct {
 };
 
 export fn dnx_row_decoder_version() u32 {
-    return 2;
+    return 3;
 }
 
 export fn dnx_row_capacity() u32 {
     return MAX_ROW_BYTES;
+}
+
+export fn dnx_macroblock_capacity() u32 {
+    return MAX_MACROBLOCKS;
+}
+
+export fn dnx_rows_capacity() u32 {
+    return MAX_ROWS;
 }
 
 export fn dnx_row_buffer_ptr() usize {
