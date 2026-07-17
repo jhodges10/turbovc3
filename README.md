@@ -78,6 +78,10 @@ Timecode tracks retain their material/source package identity, edit rate, origin
 drop-frame flag. `timecodeAt()` accepts an edit-unit index and returns both the unwrapped frame number and a
 24-hour-wrapped `HH:MM:SS:FF` or drop-frame `HH:MM:SS;FF` display value.
 
+Index resolution accepts multiple contiguous index-table segments for the same BodySID. Constant-byte-count and
+variable-byte-count clip wrapping are split into edit-unit packets when the index fully describes the layout;
+conflicting, overlapping, sparse, or non-monotonic layouts are rejected instead of being guessed.
+
 MXF BWF-style little-endian PCM can drive the same playback clock used for MOV/MP4 audio:
 
 ```ts
@@ -136,7 +140,7 @@ jobs already accepted by the underlying decoder.
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
-| MXF | OP1a and OPAtom DNx essence; PCM packets; material/source timecode tracks |
+| MXF | OP1a and OPAtom DNx essence; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
 | Profile family | CID coverage |
