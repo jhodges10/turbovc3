@@ -57,8 +57,8 @@ Acceptance criteria:
 - [x] Add Playwright integration tests for current Chromium, Firefox, and WebKit browser engines.
 - [x] Exercise cross-origin-isolated shared-row workers, ordinary packet workers, synchronous WASM, and TypeScript
   fallback paths in CI.
-- [ ] Test real WebGPU output and the non-WebGPU rendering fallback with pixel comparisons, not only mocked GPU
-  contracts.
+- [x] Test the Canvas2D non-WebGPU rendering fallback with deterministic unit and real-browser pixel comparisons.
+- [ ] Test real WebGPU output with browser pixel comparisons, not only mocked GPU contracts.
 - [ ] Add sustained playback tests for 1080p60 and UHD60 fixtures, including play, pause, backward seek, rapid scrub,
   end-of-stream, and decoder teardown.
 - [ ] Establish benchmark hardware and publish decode FPS, render FPS, dropped frames, memory high-water mark,

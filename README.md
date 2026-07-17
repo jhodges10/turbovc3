@@ -158,7 +158,7 @@ The supported root surface contains:
 - `registerDnxDecoder()` and container inspection helpers
 - `Decoder`, `Frame`, their options, results, and typed decoder errors
 - DNx frame-header inspection helpers and types
-- `DnxAudioPlayback`, `DnxRandomAccessDecoder`, and `DnxWebGpuRenderer`
+- `DnxAudioPlayback`, `DnxRandomAccessDecoder`, `DnxCanvasRenderer`, and `DnxWebGpuRenderer`
 - `demuxDnxMxf()`, `isMxfFile()`, and MXF adapter types
 
 Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
@@ -169,6 +169,8 @@ Worker-backed `Decoder.decode()` calls execute concurrently but their promises s
 numeric color fields with WebCodecs-style string getters, range, scan type, `isFilled`, and `toFilled()`.
 Use `copyLayout()`, `allocationSize()`, and `copyTo()` to copy coded plane rows into tightly packed or explicitly
 offset/strided destination storage; layouts are range-checked and may not overlap.
+`DnxCanvasRenderer` is the portable Canvas2D fallback; `DnxWebGpuRenderer.create()` returns `null` when WebGPU is
+unavailable so applications can select the fallback explicitly.
 
 ## Develop
 

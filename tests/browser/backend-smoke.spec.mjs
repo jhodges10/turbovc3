@@ -33,6 +33,39 @@ test("missing native assets fall back to TypeScript", async ({ page }) => {
   expect(result.filled).toBe(true);
 });
 
+test("Canvas2D fallback renders deterministic pixels", async ({ page }) => {
+  await page.goto("/");
+  const pixels = await page.evaluate(async () => {
+    const { DnxCanvasRenderer } = await import("/dist/dnxCanvasRenderer.js");
+    const canvas = document.createElement("canvas");
+    const renderer = DnxCanvasRenderer.create(canvas);
+    if (!renderer) throw new Error("Canvas2D is unavailable.");
+    const plane = (label, samples) => ({
+      label,
+      width: 2,
+      height: 1,
+      stride: 2,
+      bytes: Uint8Array.from(samples)
+    });
+    renderer.render({
+      index: 0,
+      timestampUs: 0,
+      width: 2,
+      height: 1,
+      format: "yuv444p8",
+      planes: [
+        plane("Y", [16, 235]),
+        plane("Cb", [128, 128]),
+        plane("Cr", [128, 128])
+      ]
+    });
+    const result = Array.from(canvas.getContext("2d").getImageData(0, 0, 2, 1).data);
+    renderer.destroy();
+    return result;
+  });
+  expect(pixels).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
+});
+
 async function decodeFixture(page, options) {
   return page.evaluate(async ({ fixtureUrl: url, decoderOptions }) => {
     const [{ Decoder, Frame }, { demuxDnxMxf }] = await Promise.all([
