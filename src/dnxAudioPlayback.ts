@@ -8,6 +8,7 @@ import {
 import { MxfDemuxer } from "./mxf/mxfDemuxer.js";
 import type { MxfPacket, MxfTrack } from "./mxf/mxfTypes.js";
 import type { MxfSourceInput } from "./mxf/mxfSource.js";
+import { readMxfPcmSample, resolveMxfPcmLayout, type MxfPcmLayout } from "./mxf/mxfPcm.js";
 import { DnxPlaybackClock } from "./dnxPlaybackClock.js";
 import { DnxNotSupportedError } from "./dnxDecoder.js";
 
@@ -141,13 +142,13 @@ export class DnxAudioPlayback implements AsyncDisposable {
       }
       const sampleRate = track.descriptor!.sampleRate!.numerator / track.descriptor!.sampleRate!.denominator;
       const numberOfChannels = track.descriptor!.channels!;
-      const bitsPerSample = track.descriptor!.bitsPerSample!;
+      const pcmLayout = resolveMxfPcmLayout(track.descriptor)!;
       const duration = Math.max(...packets.map((packet) => packet.timestamp + packet.duration));
       return new DnxAudioPlayback(
-        new MxfPcmAudioSource(demuxer, packets, context, sampleRate, numberOfChannels, bitsPerSample),
+        new MxfPcmAudioSource(demuxer, packets, context, sampleRate, numberOfChannels, pcmLayout),
         context,
         ownsContext,
-        { codec: `pcm_s${bitsPerSample}le`, sampleRate, numberOfChannels, duration },
+        { codec: `pcm_s${pcmLayout.storedBitsPerSample}le`, sampleRate, numberOfChannels, duration },
         options
       );
     } catch (error) {
@@ -310,11 +311,11 @@ class MxfPcmAudioSource implements DnxAudioSource {
     private readonly context: AudioContext,
     private readonly sampleRate: number,
     private readonly channels: number,
-    private readonly bitsPerSample: number
+    private readonly pcmLayout: MxfPcmLayout
   ) {}
 
   async *buffers(timestamp: number): AsyncIterable<ScheduledAudioBuffer> {
-    const bytesPerSample = this.bitsPerSample / 8;
+    const bytesPerSample = this.pcmLayout.bytesPerSample;
     const bytesPerFrame = bytesPerSample * this.channels;
     for (const packet of this.packets) {
       if (packet.timestamp + packet.duration <= timestamp) {
@@ -333,7 +334,7 @@ class MxfPcmAudioSource implements DnxAudioSource {
         const output = buffer.getChannelData(channel);
         for (let frame = 0; frame < frameCount; frame += 1) {
           const offset = (frame * this.channels + channel) * bytesPerSample;
-          output[frame] = readPcmSample(view, offset, this.bitsPerSample);
+          output[frame] = readMxfPcmSample(view, offset, this.pcmLayout);
         }
       }
       yield {
@@ -351,7 +352,7 @@ function isSupportedMxfPcmTrack(track: MxfTrack): boolean {
   const descriptor = track.descriptor;
   const sampleRate = descriptor?.sampleRate;
   const channels = descriptor?.channels;
-  const bitsPerSample = descriptor?.bitsPerSample;
+  const pcmLayout = resolveMxfPcmLayout(descriptor ?? null);
   const essenceContainer = descriptor?.essenceContainerUl;
   return Boolean(
     sampleRate &&
@@ -359,7 +360,7 @@ function isSupportedMxfPcmTrack(track: MxfTrack): boolean {
     sampleRate.denominator > 0 &&
     channels &&
     channels > 0 &&
-    (bitsPerSample === 16 || bitsPerSample === 24 || bitsPerSample === 32) &&
+    pcmLayout &&
     essenceContainer?.startsWith("060e2b34040101010d0103010206")
   );
 }
@@ -373,27 +374,17 @@ function describeUnsupportedMxfAudio(tracks: readonly MxfTrack[]): string {
     return [
       `track ${track.id}`,
       descriptor?.essenceContainerUl ? `essence ${descriptor.essenceContainerUl}` : "unknown essence",
-      descriptor?.bitsPerSample ? `${descriptor.bitsPerSample}-bit` : "unknown bit depth",
+      descriptor?.bitsPerSample ? `${descriptor.bitsPerSample}-bit valid` : "unknown valid bit depth",
+      descriptor?.storedBitsPerSample ? `${descriptor.storedBitsPerSample}-bit stored` : "unknown stored bit depth",
       sampleRate ? `${sampleRate} Hz` : "unknown sample rate",
       descriptor?.channels ? `${descriptor.channels} channel${descriptor.channels === 1 ? "" : "s"}` : "unknown channels"
     ].join(", ");
   });
   return (
-    "MXF audio tracks are present, but none use supported little-endian 16/24/32-bit PCM: " +
+    "MXF audio tracks are present, but none use supported little-endian PCM in 16/24/32-bit stored words: " +
     details.join("; ") +
     "."
   );
-}
-
-function readPcmSample(view: DataView, offset: number, bitsPerSample: number): number {
-  if (bitsPerSample === 16) {
-    return view.getInt16(offset, true) / 0x8000;
-  }
-  if (bitsPerSample === 24) {
-    const value = view.getUint8(offset) | (view.getUint8(offset + 1) << 8) | (view.getUint8(offset + 2) << 16);
-    return ((value & 0x800000) ? value - 0x1000000 : value) / 0x800000;
-  }
-  return view.getInt32(offset, true) / 0x80000000;
 }
 
 function createAudioContext(): AudioContext | null {

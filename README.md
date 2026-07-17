@@ -99,7 +99,10 @@ remote or untrusted ingestion should lower them to the application’s actual en
 The committed OP1a contracts cover 16-bit stereo at 30 fps and 24-bit mono at 24 fps, including a non-zero source
 and material timecode. FFmpeg 8 only muxes 48 kHz MXF audio, so other MXF sample rates remain explicitly unverified.
 `DnxAudioPlayback.createFromMxf()` returns `null` for files without audio and throws `DnxNotSupportedError` when
-audio tracks exist but none use the supported little-endian 16/24/32-bit PCM layout.
+audio tracks exist but none use the supported little-endian 16/24/32-bit PCM layout. Wave/BWF descriptors may
+declare fewer valid bits than their stored word size (for example, 20 valid bits in a 24-bit word); those samples
+are treated as signed, left-aligned PCM and their low padding bits are ignored. Big-endian and AES3 essence remain
+explicitly unsupported.
 
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
 The root adapter accepts OP1a and OPAtom operational-pattern labels and reports `DnxNotSupportedError` for other

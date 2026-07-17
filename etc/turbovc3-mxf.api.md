@@ -147,6 +147,8 @@ export interface MxfDescriptor {
     // (undocumented)
     bitsPerSample: number | null;
     // (undocumented)
+    blockAlign: number | null;
+    // (undocumented)
     channels: number | null;
     // (undocumented)
     codecUl: string | null;
@@ -166,6 +168,8 @@ export interface MxfDescriptor {
     linkedTrackId: number | null;
     // (undocumented)
     sampleRate: MxfRational | null;
+    // (undocumented)
+    storedBitsPerSample: number | null;
     // (undocumented)
     verticalSubsampling: number | null;
     // (undocumented)

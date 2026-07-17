@@ -7,6 +7,7 @@ import { build } from "esbuild";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const module = await loadModule();
+testPcmLayouts(module);
 const started = [];
 const context = {
   state: "running",
@@ -135,6 +136,37 @@ const noAudio = await module.DnxAudioPlayback.createFromMxf(
 assert.equal(noAudio, null);
 console.log("DNx MXF PCM audio playback contract passed.");
 
+function testPcmLayouts(module) {
+  const descriptor = (bitsPerSample, storedBitsPerSample) => ({
+    bitsPerSample,
+    storedBitsPerSample
+  });
+  assert.deepEqual(module.resolveMxfPcmLayout(descriptor(20, 24)), {
+    validBitsPerSample: 20,
+    storedBitsPerSample: 24,
+    bytesPerSample: 3
+  });
+  assert.equal(module.resolveMxfPcmLayout(descriptor(24, 20)), null);
+  assert.equal(module.resolveMxfPcmLayout(descriptor(24, 64)), null);
+
+  const sample = (bytes, validBitsPerSample, storedBitsPerSample) =>
+    module.readMxfPcmSample(
+      new DataView(Uint8Array.from(bytes).buffer),
+      0,
+      {
+        validBitsPerSample,
+        storedBitsPerSample,
+        bytesPerSample: storedBitsPerSample / 8
+      }
+    );
+  assert.equal(sample([0x00, 0x40], 16, 16), 0.5);
+  assert.equal(sample([0x00, 0x80], 16, 16), -1);
+  assert.equal(sample([0x0f, 0x00, 0x40], 20, 24), 0.5, "low padding bits are ignored");
+  assert.equal(sample([0x0f, 0x00, 0x80], 20, 24), -1, "signed 20-bit samples are extended");
+  assert.equal(sample([0xff, 0x00, 0x00, 0x40], 24, 32), 0.5, "32-bit containers may carry 24 valid bits");
+  assert.equal(sample([0xff, 0x00, 0x00, 0x80], 24, 32), -1);
+}
+
 async function waitFor(predicate) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (predicate()) return;
@@ -146,9 +178,10 @@ async function waitFor(predicate) {
 async function loadModule() {
   const audioModule = JSON.stringify(path.join(repoRoot, "src/dnxAudioPlayback.ts"));
   const mxfModule = JSON.stringify(path.join(repoRoot, "src/mxf/mxfDemuxer.ts"));
+  const pcmModule = JSON.stringify(path.join(repoRoot, "src/mxf/mxfPcm.ts"));
   const result = await build({
     stdin: {
-      contents: `export * from ${audioModule}; export { MxfDemuxer } from ${mxfModule};`,
+      contents: `export * from ${audioModule}; export { MxfDemuxer } from ${mxfModule}; export * from ${pcmModule};`,
       resolveDir: repoRoot,
       sourcefile: "dnx-audio-playback-test-entry.ts"
     },
