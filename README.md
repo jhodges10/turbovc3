@@ -143,12 +143,12 @@ jobs already accepted by the underlying decoder.
 | Area | Current support |
 | --- | --- |
 | Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR) |
-| Frames | Progressive through 4096×2160; interlaced DNxHD CIDs 1241–1244; field-coded CID 1260 |
+| Frames | Progressive through 4096×2160; interlaced DNxHD CIDs 1241–1244; field-coded and MBAFF CID 1260 |
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
 | MXF | OP1a and OPAtom DNx essence; BodySID/source-package track identity; material compositions/SourceClips; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
-| Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
+| Deferred | Alpha, low-latency alpha, and a dedicated 12-bit 4:4:4 fixture |
 
 Rec. 2020 constant-luminance signaling is preserved in frame metadata but is not rendered or converted to YUV yet:
 the DNx header does not carry the transfer-function detail needed to apply that transform faithfully. Renderer
@@ -157,21 +157,22 @@ capability checks return `false` for those frames instead of approximating them 
 | Profile family | CID coverage |
 | --- | --- |
 | Progressive DNxHD | CIDs 1235, 1237, 1238, 1250–1253, 1258, and 1259 are required FFmpeg oracles |
-| Interlaced DNxHD | CIDs 1241–1244 and FFmpeg's non-MBAFF CID 1260 subset are required oracles |
+| Interlaced DNxHD | CIDs 1241–1244 and FFmpeg's non-MBAFF CID 1260 subset are required oracles; MBAFF CID 1260 uses a checksum-pinned FATE oracle |
 | DNxHR | CIDs 1270–1274 are required at FFmpeg-emittable 8/10-bit formats |
 | Implemented, external oracle required | CID 1256 4:4:4 and genuine 12-bit CID 1270/1271 packets |
 
 CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,
-interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. The
-external 12-bit FATE sample remains an opt-in local oracle because FFmpeg 8 cannot produce a genuine 12-bit DNx
-packet. Fetch the checksum-pinned public FFmpeg FATE HQX sample with `npm run fixtures:fetch-extended`, then run its
-strict TypeScript/Mediabunny comparison with `npm run test:extended`. To require both native backends too, first run
+interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. External
+12-bit HQX and MBAFF CID 1260 FATE samples remain opt-in local oracles. Fetch both checksum-pinned public samples
+with `npm run fixtures:fetch-extended`, then run their strict TypeScript/Mediabunny comparisons with
+`npm run test:extended`. To require the available native paths too, first run
 `npm run build:wasm`, then `npm run test:extended -- --require-native`. Genuine 12-bit 4:4:4 still requires a separate
 external sample. The committed synthetic corpus uses bit-exact muxer output and SHA-256 manifests.
 
 Relative to FFmpeg 8's reference CID table, turbovc3 does not silently omit a listed baseline CID. It explicitly
-rejects unknown CIDs and the still-deferred coding modes signaled inside otherwise known profiles: genuine adaptive
-MBAFF, alpha, and low-latency alpha.
+rejects unknown CIDs and the still-deferred coding modes signaled inside otherwise known profiles: alpha and
+low-latency alpha. MBAFF entropy and placement use the scalar path with TypeScript or Emscripten IDCT; the Zig frame
+decoder is reserved for non-MBAFF packets and falls back safely.
 
 ## Runtime backends
 

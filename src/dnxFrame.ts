@@ -39,6 +39,7 @@ export interface DnxFrameHeader {
   cid: number;
   profile: DnxProfile | "unknown";
   width: number;
+  encodedWidth: number;
   height: number;
   bitDepth: 8 | 10 | 12;
   is444: boolean;
@@ -56,6 +57,7 @@ export interface DnxFrameHeader {
   expectedFrameSize: number | null;
   codingUnitSize: number | null;
   pixelFormat: DecodePixelFormat;
+  pixelAspectRatio: { num: number; den: number };
   supported: boolean;
   unsupportedReasons: readonly string[];
 }
@@ -125,14 +127,15 @@ export function parseDnxFrameHeader(
   }
 
   const fieldHeight = readU16BE(packet, 0x18);
-  const width = readU16BE(packet, 0x1a);
+  const encodedWidth = readU16BE(packet, 0x1a);
   const bitDepth = parseBitDepth(packet[0x21] >> 5);
-  if (!bitDepth || width <= 0 || fieldHeight <= 0) {
+  if (!bitDepth || encodedWidth <= 0 || fieldHeight <= 0) {
     return null;
   }
 
   const cidValue = readU32BE(packet, 0x28);
   const cidEntry = getDnxCidEntry(cidValue);
+  const width = cidEntry?.width ?? encodedWidth;
   const is444 = ((packet[0x2c] >> 6) & 1) === 1;
   const macroblockWidth = Math.ceil(width / 16);
   const macroblockHeight = readU16BE(packet, 0x16c);
@@ -145,8 +148,14 @@ export function parseDnxFrameHeader(
   const height = interlaced && cidEntry?.height !== null && cidEntry?.height !== undefined
     ? cidEntry.height
     : fieldHeight;
-  const expectedFrameSize = cidEntry ? expectedDnxFrameSize(cidEntry, width, height) : null;
   const mbaff = ((packet[0x06] >> 5) & 1) === 1;
+  const expectedFrameSize = cidEntry
+    ? mbaff
+      ? cidEntry.codingUnitSize
+      : expectedDnxFrameSize(cidEntry, width, height)
+    : null;
+  const aspectDivisor = greatestCommonDivisor(encodedWidth, width);
+  const pixelAspectRatio = { num: encodedWidth / aspectDivisor, den: width / aspectDivisor };
   const alpha = (packet[0x07] & 1) === 1;
   const lowLatencyAlpha = ((packet[0x07] >> 1) & 1) === 1;
   const adaptiveColorTransform = (packet[0x2c] & 1) === 1;
@@ -173,6 +182,7 @@ export function parseDnxFrameHeader(
     cid: cidValue,
     profile: cidEntry?.profile ?? "unknown",
     width,
+    encodedWidth,
     height,
     bitDepth,
     is444,
@@ -190,6 +200,7 @@ export function parseDnxFrameHeader(
     expectedFrameSize,
     codingUnitSize: cidEntry?.codingUnitSize ?? null,
     pixelFormat,
+    pixelAspectRatio,
     supported: unsupportedReasons.length === 0,
     unsupportedReasons
   };
@@ -258,7 +269,7 @@ export function dnxFrameMetadataForHeader(header: DnxFrameHeader): DnxFrameMetad
   const unspecified = header.colorSpace === "unspecified";
   const bt2020 = header.colorSpace === "bt2020-ncl" || header.colorSpace === "bt2020-cl";
   return {
-    pixelAspectRatio: { num: 1, den: 1 },
+    pixelAspectRatio: header.pixelAspectRatio ?? { num: 1, den: 1 },
     colorPrimaries: unspecified ? 2 : bt2020 ? 9 : 1,
     colorTransfer: unspecified || bt2020 ? 2 : 1,
     colorMatrix: unspecified ? 2 : header.colorSpace === "bt2020-ncl" ? 9 : header.colorSpace === "bt2020-cl" ? 10 : 1,
@@ -352,7 +363,11 @@ function unsupportedReasonsFor(options: {
   }
   if (options.cidEntry) {
     const profileIsInterlaced = options.cidEntry.flags.includes(DNXHD_INTERLACED);
-    if (options.interlaced !== profileIsInterlaced) {
+    const profileAllowsMbaff = options.cidEntry.flags.includes(DNXHD_MBAFF);
+    if (options.mbaff && !profileAllowsMbaff) {
+      reasons.push(`CID ${options.cidEntry.cid} does not permit MBAFF coding.`);
+    }
+    if (options.interlaced !== (profileIsInterlaced && !options.mbaff)) {
       reasons.push(
         options.interlaced
           ? `CID ${options.cidEntry.cid} does not permit interlaced coding.`
@@ -362,9 +377,6 @@ function unsupportedReasonsFor(options: {
   }
   if (options.width > 4096 || options.height > 2160) {
     reasons.push("Progressive DNxHR decode is limited to 4096x2160 frames.");
-  }
-  if (options.mbaff) {
-    reasons.push("MBAFF DNx output is deferred.");
   }
   if (options.alpha || options.lowLatencyAlpha) {
     reasons.push("DNx alpha output is deferred.");
@@ -388,6 +400,17 @@ function unsupportedReasonsFor(options: {
   }
 
   return reasons;
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  let a = Math.abs(left);
+  let b = Math.abs(right);
+  while (b !== 0) {
+    const remainder = a % b;
+    a = b;
+    b = remainder;
+  }
+  return a || 1;
 }
 
 function pixelFormatFor(options: {
