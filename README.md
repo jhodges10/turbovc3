@@ -163,7 +163,10 @@ capability checks return `false` for those frames instead of approximating them 
 CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,
 interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. The
 external 12-bit FATE sample remains an opt-in local oracle because FFmpeg 8 cannot produce a genuine 12-bit DNx
-packet. The committed synthetic corpus uses bit-exact muxer output and SHA-256 manifests.
+packet. Fetch the checksum-pinned public FFmpeg FATE HQX sample with `npm run fixtures:fetch-extended`, then run its
+strict TypeScript/Mediabunny comparison with `npm run test:extended`. To require both native backends too, first run
+`npm run build:wasm`, then `npm run test:extended -- --require-native`. Genuine 12-bit 4:4:4 still requires a separate
+external sample. The committed synthetic corpus uses bit-exact muxer output and SHA-256 manifests.
 
 Relative to FFmpeg 8's reference CID table, turbovc3 does not silently omit a listed baseline CID. It explicitly
 rejects unknown CIDs and the still-deferred coding modes signaled inside otherwise known profiles: genuine adaptive
