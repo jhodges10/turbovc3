@@ -91,13 +91,16 @@ function convertGbrToYuv444(
   bitDepth: 10 | 12,
   colorMatrix: "bt709" | "bt2020-ncl" | "bt2020-cl" | "unspecified"
 ): DnxFrameLayout {
+  if (colorMatrix === "bt2020-cl") {
+    throw new Error("BT.2020 constant-luminance GBR conversion requires an explicit transfer function.");
+  }
   const byteLength = source.codedWidth * source.codedHeight * 2;
   const bytes = new Uint8Array(byteLength * 3);
   const y = createPlane("Y", source.codedWidth, source.codedHeight, 2, bytes, 0);
   const cb = createPlane("Cb", source.codedWidth, source.codedHeight, 2, bytes, byteLength);
   const cr = createPlane("Cr", source.codedWidth, source.codedHeight, 2, bytes, byteLength * 2);
   const [gPlane, bPlane, rPlane] = source.planes;
-  const isBt2020 = colorMatrix === "bt2020-ncl" || colorMatrix === "bt2020-cl";
+  const isBt2020 = colorMatrix === "bt2020-ncl";
   const kr = isBt2020 ? 0.2627 : 0.2126;
   const kb = isBt2020 ? 0.0593 : 0.0722;
   const kg = 1 - kr - kb;

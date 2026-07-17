@@ -60,6 +60,10 @@ async function main() {
     }
     assert.equal(module.DnxWebGpuRenderer.supports({ ...frame420, format: "rgba8" }), false);
     assert.equal(
+      module.DnxWebGpuRenderer.supports({ ...frame420, colorSpace: { matrix: "bt2020-cl" } }),
+      false
+    );
+    assert.equal(
       module.DnxWebGpuRenderer.supports({
         ...frame420,
         planes: [{ ...frame420.planes[0], stride: 1 }, frame420.planes[1], frame420.planes[2]]

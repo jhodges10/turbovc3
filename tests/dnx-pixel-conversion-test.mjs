@@ -54,6 +54,10 @@ for (const [rgb, expected] of [
   const converted = module.convertDnxFrameLayout(makeGbrLayout(g, b, r), "gbrp12", "yuv444p12", "bt709");
   assert.deepEqual(converted.planes.map((plane) => readPlane(plane, 2)[0]), expected);
 }
+assert.throws(
+  () => module.convertDnxFrameLayout(makeGbrLayout(0, 0, 0), "gbrp10", "yuv444p10", "bt2020-cl"),
+  /requires an explicit transfer function/
+);
 console.log("DNx planar output conversion passed.");
 
 async function loadConversionModule() {
