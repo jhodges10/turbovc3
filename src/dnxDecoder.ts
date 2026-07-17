@@ -399,6 +399,12 @@ export class Decoder implements AsyncDisposable {
           : new DnxInvalidDataError("Packet does not contain a valid DNx frame header.");
       }
 
+      // An unknown CID cannot determine whether AVdn or AVdh is the correct
+      // sample entry, so reject it as unsupported before comparing FourCCs.
+      if (header.profile === "unknown") {
+        return new DnxNotSupportedError(header.unsupportedReasons.join(" "));
+      }
+
       if (header.fourCc !== this.dnxFourCc) {
         return new DnxInvalidDataError(`Packet sample entry ${header.fourCc} does not match decoder ${this.dnxFourCc}.`);
       }

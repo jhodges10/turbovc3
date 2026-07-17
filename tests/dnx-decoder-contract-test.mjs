@@ -186,6 +186,19 @@ const invalidPrefix = await malformedDecoder.decode(invalidPrefixPacket, invalid
 assert.equal(invalidPrefix.name, "DnxInvalidDataError");
 assert.equal(invalidPrefixFrame.isLocked, false);
 
+const unknownCidPacket = packetBytes.slice();
+new DataView(unknownCidPacket.buffer, unknownCidPacket.byteOffset, unknownCidPacket.byteLength).setUint32(0x28, 0x7fffffff);
+const unknownCidHeader = module.parseDnxFrameHeader(unknownCidPacket);
+assert.equal(unknownCidHeader.cid, 0x7fffffff);
+assert.equal(unknownCidHeader.expectedFrameSize, null);
+assert.equal(unknownCidHeader.supported, false);
+assert.match(unknownCidHeader.unsupportedReasons.join(" "), /Unknown or unsupported DNx CID/);
+const unknownCidFrame = new module.Frame();
+const unknownCid = await malformedDecoder.decode(unknownCidPacket, unknownCidFrame);
+assert.equal(unknownCid.name, "DnxNotSupportedError");
+assert.match(unknownCid.message, /Unknown or unsupported DNx CID/);
+assert.equal(unknownCidFrame.isFilled, false);
+
 const invalidRowsPacket = packetBytes.slice();
 invalidRowsPacket.fill(0xff, 0x170, 0x178);
 const invalidRowsFrame = new module.Frame();
@@ -544,7 +557,7 @@ async function loadDecoderModule({
       contents: `
         ${workerHarness}
         export { Decoder, Frame } from ${decoderModule};
-        export { findDnxFramePackets } from ${frameModule};
+        export { findDnxFramePackets, parseDnxFrameHeader } from ${frameModule};
         export { DnxRandomAccessDecoder } from ${randomAccessModule};
         export { demuxDnxMxf } from ${JSON.stringify(path.join(repoRoot, "src/dnxMxf.ts"))};
       `,
