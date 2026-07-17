@@ -19,6 +19,8 @@ All notable changes to turbovc3 will be documented here.
   counts, payload tails, and frame sizes.
 - Strict rejection and tests for malformed MXF BER lengths, local sets, primer/index arrays, random index packs, and
   out-of-range random-index offsets.
+- Chromium, Firefox, and WebKit integration coverage for synchronous Zig/WASM, packet workers, cross-origin-isolated
+  shared-row workers, and missing-asset TypeScript fallback.
 
 ### Changed
 
