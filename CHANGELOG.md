@@ -17,6 +17,7 @@ All notable changes to turbovc3 will be documented here.
 ### Changed
 
 - Packet-worker decode promises now settle in submission order while retaining concurrent execution.
+- Shared-row decoding reuses its packet allocation and retains output allocations across reuse of the same `Frame`.
 - Decoder teardown rejects new work and drains accepted decode/source operations before terminating workers.
 - Truncated packets with valid DNx headers now report `DnxUnexpectedEofError` instead of a capability error.
 - Published worker modules use direct-ESM-compatible `.js` specifiers.

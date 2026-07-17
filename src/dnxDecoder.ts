@@ -118,6 +118,8 @@ export class DnxFrameLockedError extends DnxDecoderError {
   }
 }
 
+const sharedFrameBuffers = new WeakMap<Frame, SharedArrayBuffer>();
+
 export class Frame implements Disposable {
   frameData: Uint8Array | null = null;
   codedWidth: number | null = null;
@@ -208,6 +210,7 @@ export class Frame implements Disposable {
     this.scanType = null;
     this.header = null;
     this.layout = null;
+    sharedFrameBuffers.delete(this);
   }
 
   [Symbol.dispose](): void {
@@ -365,8 +368,18 @@ export class Decoder implements AsyncDisposable {
 
       if (this.sharedRowDecoder) {
         try {
-          const nativeLayout = await this.sharedRowDecoder.decode(packetData, header);
-          const layout = convertDnxFrameLayout(nativeLayout, sourcePixelFormat, outputPixelFormat, header.colorSpace);
+          const decoded = await this.sharedRowDecoder.decode(
+            packetData,
+            header,
+            sharedFrameBuffers.get(frame)
+          );
+          sharedFrameBuffers.set(frame, decoded.frameBuffer);
+          const layout = convertDnxFrameLayout(
+            decoded.layout,
+            sourcePixelFormat,
+            outputPixelFormat,
+            header.colorSpace
+          );
           populateDecodedFrame(frame, header, layout, outputPixelFormat);
           return frame as FilledFrame;
         } catch (error) {

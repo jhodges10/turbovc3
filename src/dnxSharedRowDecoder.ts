@@ -21,6 +21,11 @@ interface PendingRow {
   reject(error: Error): void;
 }
 
+interface DnxSharedRowDecodeResult {
+  layout: DnxFrameLayout;
+  frameBuffer: SharedArrayBuffer;
+}
+
 export class DnxSharedRowDecoder {
   readonly mode = "shared-row-workers/zig-wasm-row";
   readonly concurrency: number;
@@ -28,6 +33,7 @@ export class DnxSharedRowDecoder {
   private nextRequestId = 1;
   private queueSize = 0;
   private closed = false;
+  private packetBuffer: SharedArrayBuffer | null = null;
   private closePromise: Promise<void> | null = null;
   private tail: Promise<void> = Promise.resolve();
   private dequeuedResolve: (() => void) | null = null;
@@ -69,7 +75,11 @@ export class DnxSharedRowDecoder {
     return this.dequeuedPromise;
   }
 
-  decode(packet: Uint8Array, header: DnxFrameHeader): Promise<DnxFrameLayout> {
+  decode(
+    packet: Uint8Array,
+    header: DnxFrameHeader,
+    reusableFrameBuffer?: SharedArrayBuffer
+  ): Promise<DnxSharedRowDecodeResult> {
     if (this.closed) {
       return Promise.reject(new Error("DNx shared row decoder is closed."));
     }
@@ -82,7 +92,7 @@ export class DnxSharedRowDecoder {
     });
 
     return preceding
-      .then(() => this.decodeNow(packet, header))
+      .then(() => this.decodeNow(packet, header, reusableFrameBuffer))
       .finally(() => {
         this.queueSize -= 1;
         releaseTail();
@@ -117,16 +127,26 @@ export class DnxSharedRowDecoder {
     this.signalDequeued();
   }
 
-  private async decodeNow(packet: Uint8Array, header: DnxFrameHeader): Promise<DnxFrameLayout> {
+  private async decodeNow(
+    packet: Uint8Array,
+    header: DnxFrameHeader,
+    reusableFrameBuffer?: SharedArrayBuffer
+  ): Promise<DnxSharedRowDecodeResult> {
     const availableSlots = this.slots.filter((slot) => !slot.failed);
     if (availableSlots.length === 0) {
       throw new Error("No DNx shared row workers are available.");
     }
 
     const rows = parseDnxRowSpans(packet, header);
-    const packetBuffer = new SharedArrayBuffer(packet.byteLength);
+    const packetBuffer = this.packetBuffer && this.packetBuffer.byteLength >= packet.byteLength
+      ? this.packetBuffer
+      : new SharedArrayBuffer(packet.byteLength);
+    this.packetBuffer = packetBuffer;
     new Uint8Array(packetBuffer).set(packet);
-    const frameBuffer = new SharedArrayBuffer(dnxFrameByteLength(header));
+    const frameByteLength = dnxFrameByteLength(header);
+    const frameBuffer = reusableFrameBuffer && reusableFrameBuffer.byteLength >= frameByteLength
+      ? reusableFrameBuffer
+      : new SharedArrayBuffer(frameByteLength);
     const layout = createDnxFrameLayout(header, frameBuffer);
 
     await Promise.all(rows.map((row, index) => {
@@ -153,7 +173,7 @@ export class DnxSharedRowDecoder {
       });
     }));
 
-    return layout;
+    return { layout, frameBuffer };
   }
 
   private initializeSlot(slot: WorkerSlot): Promise<void> {
