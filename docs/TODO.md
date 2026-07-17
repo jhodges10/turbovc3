@@ -23,8 +23,9 @@ Completed in the current `0.2` work:
 
 Remaining parity work is intentionally not marked complete without codec fixtures and oracle evidence:
 
-- [ ] Replace per-worker WASM instances and per-decode shared buffers with a measured shared-runtime/buffer-reuse
-  design, then prove the allocation and throughput improvement.
+- [x] Reuse the serialized shared-row packet buffer and retain a frame-sized shared buffer for each reusable `Frame`,
+  with allocation-identity contract coverage.
+- [ ] Replace per-worker WASM instances with a measured shared-runtime design, then prove the throughput improvement.
 - [ ] Complete worker/WASM startup coverage for Chromium, Firefox, Safari, Deno, and Bun. Node packet-worker support
   now ships through `@jhodges10/turbovc3/node`, and other hosts can inject `DecoderOptions.workerFactory` without
   mutating globals.

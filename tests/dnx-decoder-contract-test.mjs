@@ -225,16 +225,116 @@ assert.deepEqual(fallbackModule.fakeWorkerStats(), {
 });
 await fallbackDecoder.close();
 assert.equal(fallbackModule.fakeWorkerStats().packetTerminated, 2);
+
+const sharedSchedulingModule = await loadDecoderModule({ simulateSharedScheduling: true });
+const sharedSchedulingDecoder = await sharedSchedulingModule.Decoder.create({
+  dnxFourCc: "AVdh",
+  useSharedMemory: true,
+  concurrency: 2
+});
+assert.equal(sharedSchedulingDecoder instanceof Error, false);
+const sharedReusableFrame = new sharedSchedulingModule.Frame();
+assert.equal(
+  (await sharedSchedulingDecoder.decode(packetBytes, sharedReusableFrame)) instanceof Error,
+  false
+);
+assert.equal(
+  (await sharedSchedulingDecoder.decode(packetBytes, sharedReusableFrame)) instanceof Error,
+  false
+);
+assert.deepEqual(sharedSchedulingModule.fakeWorkerStats(), {
+  sharedCreated: 2,
+  sharedTerminated: 0,
+  packetBuffers: 1,
+  frameBuffers: 1
+});
+assert.equal(
+  (await sharedSchedulingDecoder.decode(packetBytes, new sharedSchedulingModule.Frame())) instanceof Error,
+  false
+);
+assert.equal(sharedSchedulingModule.fakeWorkerStats().packetBuffers, 1);
+assert.equal(sharedSchedulingModule.fakeWorkerStats().frameBuffers, 2);
+sharedReusableFrame.clear();
+assert.equal(
+  (await sharedSchedulingDecoder.decode(packetBytes, sharedReusableFrame)) instanceof Error,
+  false
+);
+assert.equal(sharedSchedulingModule.fakeWorkerStats().packetBuffers, 1);
+assert.equal(sharedSchedulingModule.fakeWorkerStats().frameBuffers, 3);
+await sharedSchedulingDecoder.close();
+assert.equal(sharedSchedulingModule.fakeWorkerStats().sharedTerminated, 2);
 console.log("DNx decoder error and frame contract passed.");
 
 async function loadDecoderModule({
   simulateSharedWorkerFailure = false,
-  simulatePacketScheduling = false
+  simulatePacketScheduling = false,
+  simulateSharedScheduling = false
 } = {}) {
   const decoderModule = JSON.stringify(path.join(repoRoot, "src/dnxDecoder.ts"));
   const frameModule = JSON.stringify(path.join(repoRoot, "src/dnxFrame.ts"));
   const randomAccessModule = JSON.stringify(path.join(repoRoot, "src/dnxRandomAccessDecoder.ts"));
-  const workerHarness = simulateSharedWorkerFailure ? `
+  const workerHarness = simulateSharedScheduling ? `
+    const workerStats = {
+      sharedCreated: 0,
+      sharedTerminated: 0
+    };
+    const packetBuffers = new Set();
+    const frameBuffers = new Set();
+
+    class FakeWorker {
+      listeners = new Map();
+
+      constructor() {
+        workerStats.sharedCreated += 1;
+      }
+
+      addEventListener(type, listener) {
+        const listeners = this.listeners.get(type) ?? [];
+        listeners.push(listener);
+        this.listeners.set(type, listeners);
+      }
+
+      removeEventListener(type, listener) {
+        const listeners = this.listeners.get(type) ?? [];
+        this.listeners.set(type, listeners.filter((candidate) => candidate !== listener));
+      }
+
+      postMessage(request) {
+        if (request.type === "init") {
+          this.dispatch("message", { data: { type: "ready", mode: "fake-shared-row" } });
+          return;
+        }
+        if (request.type === "decode-row") {
+          packetBuffers.add(request.packet);
+          frameBuffers.add(request.frame);
+          this.dispatch("message", {
+            data: { type: "decoded-row", requestId: request.requestId }
+          });
+        }
+      }
+
+      terminate() {
+        workerStats.sharedTerminated += 1;
+      }
+
+      dispatch(type, event) {
+        for (const listener of [...(this.listeners.get(type) ?? [])]) {
+          listener(event);
+        }
+      }
+    }
+
+    globalThis.Worker = FakeWorker;
+    Object.defineProperty(globalThis, "crossOriginIsolated", {
+      configurable: true,
+      value: true
+    });
+    export const fakeWorkerStats = () => ({
+      ...workerStats,
+      packetBuffers: packetBuffers.size,
+      frameBuffers: frameBuffers.size
+    });
+  ` : simulateSharedWorkerFailure ? `
     const workerStats = {
       sharedCreated: 0,
       sharedTerminated: 0,
@@ -380,7 +480,7 @@ async function loadDecoderModule({
     format: "esm",
     platform: "node",
     target: "node22",
-    define: simulateSharedWorkerFailure || simulatePacketScheduling
+    define: simulateSharedWorkerFailure || simulatePacketScheduling || simulateSharedScheduling
       ? { "import.meta.url": JSON.stringify("file:///fake/dnx-decoder-contract-entry.js") }
       : undefined,
     write: false
