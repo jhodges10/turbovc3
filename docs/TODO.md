@@ -120,7 +120,10 @@ Initial performance target:
   8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
 - [x] Expand committed oracle coverage to progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
 - [ ] Add CID 1256 DNxHD 4:4:4 from an external source; FFmpeg 8 rejects that encoding combination.
-- [ ] Verify adaptive color transform behavior across scalar, Zig/WASM, Mediabunny, and WebGPU paths.
+- [x] Verify adaptive color transform selection and channel ordering against paired YUV/GBR FFmpeg oracles across
+  scalar and Zig/WASM decode, with both renderer interpretations covered by pixel contracts.
+- [ ] Verify Mediabunny's long-term representation of DNx 4:4:4 GBR versus YUV once it exposes first-class DNx
+  codec metadata rather than the guarded extension shim.
 - [x] Reject unknown CIDs before decode even when their header dimensions, packet size, and pixel format otherwise
   resemble a supported VC-3 frame.
 - [ ] Document any valid VC-3 profiles intentionally excluded from browser decode.

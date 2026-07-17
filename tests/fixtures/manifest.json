@@ -166,6 +166,19 @@
       "sha256": "ce1aab469dc96c8d65b22d68cae9a0fe68d8bab7178aa8b1991c0ffedc5ff4fb"
     },
     {
+      "path": "oracle_dnxhr_444_gbr_1080p30_10bit.mov",
+      "sha256": "722b9b342d3558db8c0bf32de2d7b650e7646bbe9ae7c8b151e4d95ffe281d07",
+      "cid": 1270,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "gbrp10",
+      "adaptiveColorTransform": false
+    },
+    {
+      "path": "oracle_dnxhr_444_gbr_1080p30_10bit.yuv.gz",
+      "sha256": "37e06eeee8c55dd20ed9aabfdcb0568fdf0dade59f3f50a461254ea62105685d"
+    },
+    {
       "path": "dnxhr-lb-op1a-pcm.mxf",
       "sha256": "73fb1a228da10e7136bb9dd13ad8f18b166cf0959c6120251bc7dc62c341d3b5",
       "cid": 1274,

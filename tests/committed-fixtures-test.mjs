@@ -36,6 +36,8 @@ const requiredFiles = [
   "oracle_dnxhr_hqx_1080p30_10bit_cid1271.yuv.gz",
   "oracle_dnxhr_444_1080p30_10bit.mov",
   "oracle_dnxhr_444_1080p30_10bit.yuv.gz",
+  "oracle_dnxhr_444_gbr_1080p30_10bit.mov",
+  "oracle_dnxhr_444_gbr_1080p30_10bit.yuv.gz",
   "dnxhr-lb-op1a-pcm.mxf",
   "dnxhr-lb-opatom.mxf"
 ];
