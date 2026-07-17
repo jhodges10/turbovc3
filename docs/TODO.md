@@ -35,6 +35,8 @@ Remaining parity work is intentionally not marked complete without codec fixture
 - [ ] Implement adaptive-macroblock MBAFF and add alpha/low-latency-alpha decode, rendering, and lifetime contracts.
 - [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
 - [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.
+- [x] Add a reproducible local/CI-smoke benchmark report for synchronous/native decode, worker concurrency, retained
+  frame allocations, close-under-load draining, and cold/warm source-backed seeks without runner-specific thresholds.
 
 ## P0: Source-Backed Decode and Fast Seeking
 

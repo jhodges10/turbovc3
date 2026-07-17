@@ -71,7 +71,7 @@ export function createDnxFrameLayout(
   }
   const frameBytes = new Uint8Array(backingBuffer ?? new ArrayBuffer(byteLength), 0, byteLength);
 
-  const planeLabels = header.pixelFormat === "gbrp10" ? ["G", "B", "R"] : ["Y", "Cb", "Cr"];
+  const planeLabels = header.pixelFormat.startsWith("gbrp") ? ["G", "B", "R"] : ["Y", "Cb", "Cr"];
   const y = createPlane(
     planeLabels[0],
     codedWidth,

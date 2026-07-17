@@ -209,6 +209,13 @@ assert.throws(
 assert.equal(copyFrame.acquireLock(), true);
 assert.throws(() => copyFrame.copyLayout(), { name: "DnxFrameLockedError" });
 copyFrame.releaseLock();
+const reusedAllocation = copyFrame.layout.planes.map((plane) => plane.bytes.buffer);
+const reusedDecode = await malformedDecoder.decode(packetBytes, copyFrame);
+assert.equal(reusedDecode instanceof Error, false);
+assert.deepEqual(
+  reusedDecode.layout.planes.map((plane) => plane.bytes.buffer),
+  reusedAllocation
+);
 copyFrame.clear();
 assert.throws(() => copyFrame.copyLayout(), /empty DNx output frame/);
 for (const truncatedLength of [0, 1, 639, 640, Math.floor(packetBytes.byteLength / 2)]) {

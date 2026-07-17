@@ -34,6 +34,7 @@ try {
     "dist/mxf/index.d.ts",
     "dist/node.js",
     "dist/node.d.ts",
+    "docs/benchmarks.md",
     "dist/workers/dnxPacketDecode.worker.js",
     "dist/workers/dnxSharedRowDecode.worker.js",
     "dist/workers/dnxNodePacketDecode.worker.js",
