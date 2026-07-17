@@ -32,8 +32,12 @@ try {
     "dist/index.d.ts",
     "dist/mxf/index.js",
     "dist/mxf/index.d.ts",
+    "dist/node.js",
+    "dist/node.d.ts",
     "dist/workers/dnxPacketDecode.worker.js",
-    "dist/workers/dnxSharedRowDecode.worker.js"
+    "dist/workers/dnxSharedRowDecode.worker.js",
+    "dist/workers/dnxNodePacketDecode.worker.js",
+    "dist/workers/dnxNodeSharedRowDecode.worker.js"
   ]) {
     assert.equal(existsSync(path.join(packageRoot, relativePath)), true, `${relativePath} is packed`);
   }
@@ -59,6 +63,7 @@ try {
     import assert from "node:assert/strict";
     import * as root from "@jhodges10/turbovc3";
     import * as mxf from "@jhodges10/turbovc3/mxf";
+    import { createNodeDecoder } from "@jhodges10/turbovc3/node";
     assert.equal(typeof root.registerDnxDecoder, "function");
     assert.equal(typeof root.Decoder, "function");
     assert.equal(typeof root.DnxBitReader, "undefined");
@@ -68,6 +73,14 @@ try {
     assert.equal(decoder instanceof Error, false);
     assert.equal(decoder.idctMode, "typescript-idct");
     await decoder[Symbol.asyncDispose]();
+    const nodeDecoder = await createNodeDecoder({
+      dnxFourCc: "AVdh",
+      useSharedMemory: false,
+      concurrency: 2
+    });
+    assert.equal(nodeDecoder instanceof Error, false);
+    assert.equal(nodeDecoder.idctMode.startsWith("worker-pool/"), true);
+    await nodeDecoder.close();
   `);
   const consumer = spawnSync(process.execPath, [consumerScript], { cwd: consumerRoot, encoding: "utf8" });
   assert.equal(consumer.status, 0, consumer.stderr || consumer.stdout || "consumer import smoke test");

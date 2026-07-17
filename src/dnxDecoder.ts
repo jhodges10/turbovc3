@@ -18,6 +18,7 @@ import { convertDnxFrameLayout, selectDnxOutputFormat } from "./dnxPixelConversi
 import { DnxSharedRowDecoder } from "./dnxSharedRowDecoder.js";
 import { createDnxZigRowDecoder, type DnxRowDecoder } from "./dnxZigRowDecoder.js";
 import { DnxDecoderWorkerPool } from "./dnxDecoderWorkerPool.js";
+import type { DnxWorkerFactory } from "./dnxWorker.js";
 
 export type DnxPixelFormat = Extract<
   DecodePixelFormat,
@@ -39,6 +40,15 @@ export interface DecoderOptions {
   useSharedMemory: boolean;
   concurrency?: number;
   allowedOutputFormats?: readonly DnxPixelFormat[];
+  workerFactory?: DnxWorkerFactory;
+}
+
+interface ResolvedDecoderOptions {
+  dnxFourCc: DnxFourCc;
+  useSharedMemory: boolean;
+  concurrency: number;
+  allowedOutputFormats: readonly DnxPixelFormat[];
+  workerFactory: DnxWorkerFactory | null;
 }
 
 export interface DecodeOptions {
@@ -214,7 +224,7 @@ export class Decoder implements AsyncDisposable {
   private closePromise: Promise<void> | null = null;
 
   private constructor(
-    options: Required<DecoderOptions>,
+    options: ResolvedDecoderOptions,
     private readonly idctKernel: DnxIdctKernel | null,
     private readonly rowDecoder: DnxRowDecoder | null,
     private readonly sharedRowDecoder: DnxSharedRowDecoder | null,
@@ -250,23 +260,27 @@ export class Decoder implements AsyncDisposable {
     if (!DNX_SAMPLE_ENTRIES.includes(options.dnxFourCc)) {
       return new DnxNotSupportedError(`Unsupported DNx sample entry "${options.dnxFourCc}".`);
     }
-    if (options.useSharedMemory && !Decoder.canUseSharedMemory()) {
-      return new DnxNotSupportedError(
-        "Shared-memory DNx row threading requires Worker, SharedArrayBuffer, and a cross-origin-isolated page."
-      );
-    }
-
-    const resolvedOptions: Required<DecoderOptions> = {
+    const workerFactory = options.workerFactory ?? browserWorkerFactory();
+    const resolvedOptions: ResolvedDecoderOptions = {
       dnxFourCc: options.dnxFourCc,
       useSharedMemory: options.useSharedMemory,
       concurrency: options.concurrency ?? Math.min(4, Math.max(1, globalThis.navigator?.hardwareConcurrency ?? 4)),
       allowedOutputFormats: options.allowedOutputFormats ?? [
         "yuv422p8", "yuv422p10", "yuv422p12", "yuv444p10", "yuv444p12", "gbrp10", "gbrp12"
-      ]
+      ],
+      workerFactory
     };
     if (resolvedOptions.useSharedMemory) {
+      if (!workerFactory || typeof SharedArrayBuffer === "undefined" || (!options.workerFactory && !Decoder.canUseSharedMemory())) {
+        return new DnxNotSupportedError(
+          "Shared-memory DNx row threading requires a worker factory, SharedArrayBuffer, and browser cross-origin isolation when applicable."
+        );
+      }
       try {
-        const sharedRowDecoder = await DnxSharedRowDecoder.create(Math.max(1, resolvedOptions.concurrency));
+        const sharedRowDecoder = await DnxSharedRowDecoder.create(
+          Math.max(1, resolvedOptions.concurrency),
+          workerFactory
+        );
         return new Decoder(resolvedOptions, null, null, sharedRowDecoder, null);
       } catch {
         // A page can satisfy the shared-memory capability checks while its row
@@ -276,7 +290,7 @@ export class Decoder implements AsyncDisposable {
         resolvedOptions.useSharedMemory = false;
       }
     }
-    if (resolvedOptions.concurrency > 0 && typeof Worker !== "undefined") {
+    if (resolvedOptions.concurrency > 0 && workerFactory) {
       try {
         const workerPoolOptions = { ...resolvedOptions, useSharedMemory: false };
         const workerPool = await DnxDecoderWorkerPool.create(workerPoolOptions);
@@ -419,6 +433,13 @@ export class Decoder implements AsyncDisposable {
   [Symbol.asyncDispose](): Promise<void> {
     return this.close();
   }
+}
+
+function browserWorkerFactory(): DnxWorkerFactory | null {
+  if (typeof Worker === "undefined") {
+    return null;
+  }
+  return (_kind, moduleUrl) => new Worker(moduleUrl, { type: "module" });
 }
 
 function populateFrameHeader(frame: Frame, header: DnxFrameHeader): void {

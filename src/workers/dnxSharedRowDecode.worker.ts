@@ -1,10 +1,10 @@
-import { createDnxFrameLayout } from "../dnxReconstruction";
-import { getDnxRowTableSet, putDnxDecodedRow } from "../dnxScalarDecoder";
-import { createDnxZigRowDecoder, type DnxRowDecoder } from "../dnxZigRowDecoder";
+import { createDnxFrameLayout } from "../dnxReconstruction.js";
+import { getDnxRowTableSet, putDnxDecodedRow } from "../dnxScalarDecoder.js";
+import { createDnxZigRowDecoder, type DnxRowDecoder } from "../dnxZigRowDecoder.js";
 import type {
   DnxSharedRowWorkerRequest,
   DnxSharedRowWorkerResponse
-} from "../dnxSharedRowWorkerProtocol";
+} from "../dnxSharedRowWorkerProtocol.js";
 
 let decoder: DnxRowDecoder | null = null;
 const workerScope = globalThis as unknown as {

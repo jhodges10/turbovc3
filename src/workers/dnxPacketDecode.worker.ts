@@ -1,9 +1,9 @@
-import { Decoder, Frame } from "../dnxDecoder";
+import { Decoder, Frame } from "../dnxDecoder.js";
 import type {
   DnxPacketWorkerRequest,
   DnxPacketWorkerResponse,
   DnxWorkerFrameContents
-} from "../dnxDecoderWorkerProtocol";
+} from "../dnxDecoderWorkerProtocol.js";
 
 let decoder: Decoder | null = null;
 const workerScope = globalThis as unknown as {

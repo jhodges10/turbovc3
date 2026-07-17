@@ -30,6 +30,10 @@
     "./mxf": {
       "types": "./dist/mxf/index.d.ts",
       "import": "./dist/mxf/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
     }
   },
   "files": [
@@ -48,8 +52,8 @@
     "prepare": "npm run build",
     "prepack": "npm run build",
     "check": "tsc --noEmit -p tsconfig.json",
-    "api:report": "npm run build && api-extractor run && api-extractor run --config api-extractor.mxf.json",
-    "api:report:update": "npm run build && api-extractor run --local && api-extractor run --local --config api-extractor.mxf.json",
+    "api:report": "npm run build && api-extractor run && api-extractor run --config api-extractor.mxf.json && api-extractor run --config api-extractor.node.json",
+    "api:report:update": "npm run build && api-extractor run --local && api-extractor run --local --config api-extractor.mxf.json && api-extractor run --local --config api-extractor.node.json",
     "build:wasm-kernel": "bash scripts/build-dnx-wasm.sh",
     "build:zig-wasm": "bash scripts/build-dnx-zig-wasm.sh",
     "build:wasm": "npm run build:wasm-kernel && npm run build:zig-wasm",

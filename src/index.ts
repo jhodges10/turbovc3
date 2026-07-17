@@ -13,3 +13,4 @@ export type {
   DecodePlane
 } from "./core/codec.js";
 export type { DnxFrameLayout } from "./dnxReconstruction.js";
+export type { DnxWorker, DnxWorkerFactory, DnxWorkerKind } from "./dnxWorker.js";
