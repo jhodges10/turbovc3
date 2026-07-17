@@ -278,6 +278,10 @@ export interface DnxFrameHeader {
     // (undocumented)
     expectedFrameSize: number | null;
     // (undocumented)
+    fieldHeight: number;
+    // (undocumented)
+    fieldParity: "top" | "bottom" | null;
+    // (undocumented)
     fourCc: DnxFourCc;
     // (undocumented)
     height: number;

@@ -118,15 +118,16 @@ jobs already accepted by the underlying decoder.
 | Area | Current support |
 | --- | --- |
 | Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR) |
-| Frames | Progressive through 4096×2160 |
+| Frames | Progressive through 4096×2160; interlaced DNxHD CID 1241 |
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
 | MXF | OP1a and OPAtom DNx essence; PCM track metadata and packet extraction |
-| Deferred | Interlaced/MBAFF, alpha, and a dedicated 12-bit 4:4:4 fixture |
+| Deferred | Other interlaced CIDs, MBAFF, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
-CI performs real FFmpeg-oracle comparisons for DNxHD 8-bit, DNxHR HQX 10-bit, and DNxHR 444 10-bit, plus OP1a
-and OPAtom demuxing. The extended local suite covers additional profiles and the external FFmpeg 12-bit FATE sample.
+CI performs real FFmpeg-oracle comparisons for progressive DNxHD 8/10-bit, interlaced CID 1241, DNxHR HQX 10-bit,
+and DNxHR 444 10-bit, plus OP1a and OPAtom demuxing. The extended local suite covers additional profiles and the
+external FFmpeg 12-bit FATE sample.
 
 ## Runtime backends
 

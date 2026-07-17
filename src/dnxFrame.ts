@@ -47,6 +47,8 @@ export interface DnxFrameHeader {
   lowLatencyAlpha: boolean;
   mbaff: boolean;
   interlaced: boolean;
+  fieldHeight: number;
+  fieldParity: "top" | "bottom" | null;
   colorSpace: "bt709" | "bt2020-ncl" | "bt2020-cl" | "unspecified";
   macroblockWidth: number;
   macroblockHeight: number;
@@ -122,10 +124,10 @@ export function parseDnxFrameHeader(
     return null;
   }
 
-  const height = readU16BE(packet, 0x18);
+  const fieldHeight = readU16BE(packet, 0x18);
   const width = readU16BE(packet, 0x1a);
   const bitDepth = parseBitDepth(packet[0x21] >> 5);
-  if (!bitDepth || width <= 0 || height <= 0) {
+  if (!bitDepth || width <= 0 || fieldHeight <= 0) {
     return null;
   }
 
@@ -134,13 +136,16 @@ export function parseDnxFrameHeader(
   const is444 = ((packet[0x2c] >> 6) & 1) === 1;
   const macroblockWidth = Math.ceil(width / 16);
   const macroblockHeight = readU16BE(packet, 0x16c);
-  const expectedFrameSize = cidEntry ? expectedDnxFrameSize(cidEntry, width, height) : null;
   const dataOffset =
     prefix.kind === "hr" && macroblockHeight > 68
       ? 0x170 + (macroblockHeight << 2)
       : 0x280;
 
   const interlaced = (packet[5] & 2) !== 0;
+  const height = interlaced && cidEntry?.height !== null && cidEntry?.height !== undefined
+    ? cidEntry.height
+    : fieldHeight;
+  const expectedFrameSize = cidEntry ? expectedDnxFrameSize(cidEntry, width, height) : null;
   const mbaff = ((packet[0x06] >> 5) & 1) === 1;
   const alpha = (packet[0x07] & 1) === 1;
   const lowLatencyAlpha = ((packet[0x07] >> 1) & 1) === 1;
@@ -176,6 +181,8 @@ export function parseDnxFrameHeader(
     lowLatencyAlpha,
     mbaff,
     interlaced,
+    fieldHeight,
+    fieldParity: interlaced ? ((packet[5] & 1) === 0 ? "top" : "bottom") : null,
     colorSpace: colorSpaceFor((packet[0x2c] >> 1) & 3),
     macroblockWidth,
     macroblockHeight,
@@ -256,7 +263,11 @@ export function dnxFrameMetadataForHeader(header: DnxFrameHeader): DnxFrameMetad
     colorTransfer: unspecified || bt2020 ? 2 : 1,
     colorMatrix: unspecified ? 2 : header.colorSpace === "bt2020-ncl" ? 9 : header.colorSpace === "bt2020-cl" ? 10 : 1,
     colorRangeFull: false,
-    scanType: header.interlaced ? "interlaced-top-field-first" : "progressive"
+    scanType: header.interlaced
+      ? header.fieldParity === "bottom"
+        ? "interlaced-bottom-field-first"
+        : "interlaced-top-field-first"
+      : "progressive"
   };
 }
 
@@ -339,11 +350,21 @@ function unsupportedReasonsFor(options: {
   if (!options.cidEntry) {
     reasons.push("Unknown or unsupported DNx CID.");
   }
+  if (options.cidEntry) {
+    const profileIsInterlaced = options.cidEntry.flags.includes(DNXHD_INTERLACED);
+    if (options.interlaced !== profileIsInterlaced) {
+      reasons.push(
+        options.interlaced
+          ? `CID ${options.cidEntry.cid} does not permit interlaced coding.`
+          : `CID ${options.cidEntry.cid} requires interlaced coding.`
+      );
+    }
+  }
   if (options.width > 4096 || options.height > 2160) {
     reasons.push("Progressive DNxHR decode is limited to 4096x2160 frames.");
   }
-  if (options.interlaced || options.mbaff) {
-    reasons.push("Interlaced and MBAFF DNx output is deferred.");
+  if (options.mbaff) {
+    reasons.push("MBAFF DNx output is deferred.");
   }
   if (options.alpha || options.lowLatencyAlpha) {
     reasons.push("DNx alpha output is deferred.");

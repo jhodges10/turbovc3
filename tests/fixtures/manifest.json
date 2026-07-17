@@ -4,6 +4,19 @@
   "description": "One-frame synthetic test-pattern fixtures and compressed FFmpeg oracle output.",
   "files": [
     {
+      "path": "oracle_dnxhd_1080i2997_10bit_cid1241.mxf",
+      "sha256": "1040dd60b66edd40104007b49fe61c95f7c35ce510c8298af8156ee7bc1f22bf",
+      "cid": 1241,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv422p10",
+      "scanType": "interlaced-top-field-first"
+    },
+    {
+      "path": "oracle_dnxhd_1080i2997_10bit_cid1241.yuv.gz",
+      "sha256": "07d4259d9f80bd72103c7b90ab58cf250d5aed0edcc388f97b9def3cd5f5d69a"
+    },
+    {
       "path": "oracle_dnxhd_720p30_10bit_cid1250.mxf",
       "sha256": "2ac132bafbac43c6dac9617e2e8184b323c9d488bd8de906c00d592b6bde9fab",
       "cid": 1250,

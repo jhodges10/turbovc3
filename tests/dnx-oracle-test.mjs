@@ -21,6 +21,14 @@ const source = args.source ?? process.env.DNX_SOURCE ?? firstExisting([
 
 const supportedFixtures = [
   {
+    name: "dnxhd-1080i2997-10bit-cid1241",
+    output: path.join(fixtureDir, "oracle_dnxhd_1080i2997_10bit_cid1241.mxf"),
+    vf: "setfield=tff,format=yuv422p10le",
+    bitrate: "185M",
+    oraclePixelFormat: "yuv422p10le",
+    expected: { cid: 1241, width: 1920, height: 1080, pixelFormat: "yuv422p10", frameCount: frames }
+  },
+  {
     name: "dnxhd-720p30-10bit-cid1250",
     output: path.join(fixtureDir, "oracle_dnxhd_720p30_10bit_cid1250.mxf"),
     vf: "fps=30,scale=1280:720,format=yuv422p10le",
@@ -577,6 +585,18 @@ function runSyntheticHeaderTests(decoder) {
     packetLength: 606208
   });
   assertEqual(interlaced?.supported, false, "Interlaced DNxHD should be unsupported");
+  const supportedInterlaced = decoder.parseSyntheticHeader({
+    cid: 1241,
+    width: 1920,
+    height: 540,
+    bitDepthIndicator: 2,
+    interlaced: true,
+    macroblockHeight: 34,
+    packetLength: 917504
+  });
+  assertEqual(supportedInterlaced?.supported, true, "CID 1241 interlaced DNxHD should be supported");
+  assertEqual(supportedInterlaced?.height, 1080, "CID 1241 display height");
+  assertEqual(supportedInterlaced?.fieldHeight, 540, "CID 1241 field height");
   console.log("synthetic header tests passed");
 }
 
