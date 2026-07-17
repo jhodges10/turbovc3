@@ -583,6 +583,20 @@ export class DnxUnexpectedEofError extends DnxInvalidDataError {
 }
 
 // @public (undocumented)
+export interface DnxVideoFrameOptions {
+    // (undocumented)
+    colorSpace?: VideoColorSpaceInit;
+    // (undocumented)
+    displayHeight?: number;
+    // (undocumented)
+    displayWidth?: number;
+    // (undocumented)
+    duration?: number;
+    // (undocumented)
+    timestamp: number;
+}
+
+// @public (undocumented)
 export class DnxWebGpuRenderer {
     // (undocumented)
     static create(canvas: HTMLCanvasElement, options?: DnxWebGpuRendererOptions): Promise<DnxWebGpuRenderer | null>;
@@ -706,6 +720,8 @@ export class Frame implements Disposable {
     scanType: DnxScanType | null;
     // (undocumented)
     toFilled(): FilledFrame | null;
+    // (undocumented)
+    toVideoFrame(options: DnxVideoFrameOptions): VideoFrame;
     // (undocumented)
     visibleHeight: number | null;
     // (undocumented)

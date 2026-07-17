@@ -50,6 +50,8 @@ All notable changes to turbovc3 will be documented here.
   leaves registration retry-safe after a rejected incompatible version.
 - Multi-segment MXF index resolution and deterministic packet slicing for fully indexed constant- or
   variable-byte-count clip wrapping.
+- `Frame.toVideoFrame()` for standard 8-bit planar WebCodecs output with timing, display-aspect, color, and plane
+  layout metadata, plus explicit rejection of non-portable high-bit-depth and GBR layouts.
 
 ### Changed
 

@@ -255,16 +255,7 @@ function createVideoSample(
 
   if (typeof VideoFrame !== "undefined") {
     try {
-      const videoFrame = new VideoFrame(frameData, {
-        format: format as VideoPixelFormat,
-        codedWidth: frame.codedWidth,
-        codedHeight: frame.codedHeight,
-        visibleRect: {
-          x: 0,
-          y: 0,
-          width: frame.visibleWidth,
-          height: frame.visibleHeight
-        },
+      const videoFrame = frame.toVideoFrame({
         displayWidth,
         displayHeight,
         timestamp: packet.microsecondTimestamp,

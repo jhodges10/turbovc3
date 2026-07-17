@@ -211,6 +211,11 @@ The supported root surface contains:
 Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
 The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
 
+Filled frames expose `toVideoFrame({ timestamp, duration, ... })` for the standard 8-bit planar WebCodecs formats.
+The bridge preserves visible/coded dimensions, pixel aspect ratio, color metadata, and plane layout. High-bit-depth
+and planar GBR frames remain available through `copyTo()` because the WebCodecs `VideoPixelFormat` surface has no
+portable representation for those layouts; attempting the bridge reports `DnxNotSupportedError`.
+
 Worker-backed `Decoder.decode()` calls execute concurrently but their promises settle in submission order. A filled
 `Frame` exposes coded/visible dimensions, original and converted pixel formats, square-pixel bare-frame metadata,
 numeric color fields with WebCodecs-style string getters, range, scan type, `isFilled`, and `toFilled()`.

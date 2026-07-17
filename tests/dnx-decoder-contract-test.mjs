@@ -158,6 +158,45 @@ assert.deepEqual(
     copyFrame.layout.planes[0].stride + resolvedPaddedLayout[0].rowBytes
   )
 );
+const originalVideoFrame = globalThis.VideoFrame;
+let videoFrameData;
+let videoFrameInit;
+globalThis.VideoFrame = class {
+  constructor(data, init) {
+    videoFrameData = data;
+    videoFrameInit = init;
+  }
+};
+try {
+  const videoFrame = copyFrame.toVideoFrame({ timestamp: 12_345, duration: 33_333 });
+  assert.ok(videoFrame);
+  assert.equal(videoFrameInit.format, "I422");
+  assert.equal(videoFrameInit.codedWidth, copyFrame.codedWidth);
+  assert.equal(videoFrameInit.visibleRect.width, copyFrame.visibleWidth);
+  assert.equal(videoFrameInit.timestamp, 12_345);
+  assert.equal(videoFrameInit.duration, 33_333);
+  assert.deepEqual(
+    videoFrameInit.layout,
+    packedLayout.map(({ offset, stride }) => ({ offset, stride }))
+  );
+  assert.deepEqual(
+    videoFrameData.subarray(0, packedLayout[0].rowBytes),
+    packedCopy.subarray(0, packedLayout[0].rowBytes)
+  );
+  const originalPixelFormat = copyFrame.pixelFormat;
+  copyFrame.pixelFormat = "yuv422p10";
+  assert.throws(() => copyFrame.toVideoFrame({ timestamp: 0 }), { name: "DnxNotSupportedError" });
+  copyFrame.pixelFormat = originalPixelFormat;
+} finally {
+  if (originalVideoFrame === undefined) {
+    delete globalThis.VideoFrame;
+  } else {
+    globalThis.VideoFrame = originalVideoFrame;
+  }
+}
+if (originalVideoFrame === undefined) {
+  assert.throws(() => copyFrame.toVideoFrame({ timestamp: 0 }), /VideoFrame is not available/);
+}
 assert.throws(() => copyFrame.copyTo(new Uint8Array(1)), RangeError);
 assert.throws(
   () => copyFrame.copyLayout(packedLayout.map((plane) => ({ offset: plane.offset, stride: 1 }))),
