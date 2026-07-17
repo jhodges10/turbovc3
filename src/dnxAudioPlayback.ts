@@ -8,6 +8,7 @@ import {
 import { MxfDemuxer } from "./mxf/mxfDemuxer.js";
 import type { MxfPacket, MxfTrack } from "./mxf/mxfTypes.js";
 import type { MxfSourceInput } from "./mxf/mxfSource.js";
+import { DnxPlaybackClock } from "./dnxPlaybackClock.js";
 
 export interface DnxAudioPlaybackOptions {
   audioContext?: AudioContext;
@@ -36,6 +37,7 @@ interface DnxAudioSource {
 
 export class DnxAudioPlayback implements AsyncDisposable {
   readonly track: DnxAudioTrackInfo;
+  readonly clock: DnxPlaybackClock;
   private readonly source: DnxAudioSource;
   private readonly context: AudioContext;
   private readonly destination: AudioNode;
@@ -45,10 +47,7 @@ export class DnxAudioPlayback implements AsyncDisposable {
   private readonly sources = new Set<AudioBufferSourceNode>();
   private scheduleGeneration = 0;
   private schedulePromise: Promise<void> = Promise.resolve();
-  private mediaStartTime = 0;
   private contextStartTime = 0;
-  private pausedTime = 0;
-  private playing = false;
   private closed = false;
 
   private constructor(
@@ -63,6 +62,7 @@ export class DnxAudioPlayback implements AsyncDisposable {
     this.destination = options.destination ?? context.destination;
     this.ownsContext = ownsContext;
     this.track = track;
+    this.clock = new DnxPlaybackClock({ duration: track.duration, now: () => context.currentTime });
     this.scheduleLeadTime = Math.max(0, options.scheduleLeadTime ?? 0.05);
     this.onError = options.onError ?? (() => undefined);
   }
@@ -151,21 +151,15 @@ export class DnxAudioPlayback implements AsyncDisposable {
   }
 
   get isPlaying(): boolean {
-    return this.playing;
+    return this.clock.isRunning;
   }
 
   get isClockRunning(): boolean {
-    return this.playing && this.context.state === "running";
+    return this.clock.isRunning && this.context.state === "running";
   }
 
   get currentTime(): number {
-    if (!this.playing) {
-      return this.pausedTime;
-    }
-    return Math.min(
-      this.track.duration,
-      this.mediaStartTime + Math.max(0, this.context.currentTime - this.contextStartTime)
-    );
+    return this.clock.currentTime;
   }
 
   async unlock(): Promise<void> {
@@ -179,40 +173,37 @@ export class DnxAudioPlayback implements AsyncDisposable {
     }
   }
 
-  async start(timestamp = this.pausedTime): Promise<void> {
+  async start(timestamp = this.clock.currentTime): Promise<void> {
     this.assertOpen();
     const boundedTimestamp = Math.max(0, Math.min(this.track.duration, timestamp));
     this.stopSources();
     await this.unlock();
 
     const generation = ++this.scheduleGeneration;
-    this.mediaStartTime = boundedTimestamp;
-    this.pausedTime = boundedTimestamp;
     this.contextStartTime = this.context.currentTime + this.scheduleLeadTime;
-    this.playing = true;
+    this.clock.start(boundedTimestamp, this.contextStartTime);
     this.schedulePromise = this.scheduleBuffers(generation, boundedTimestamp).catch((error: unknown) => {
       if (generation === this.scheduleGeneration && !this.closed) {
-        this.playing = false;
+        this.clock.pause();
         this.onError(toError(error));
       }
     });
   }
 
   pause(): void {
-    if (!this.playing) {
+    if (!this.clock.isRunning) {
       return;
     }
-    this.pausedTime = this.currentTime;
-    this.playing = false;
+    this.clock.pause();
     this.scheduleGeneration += 1;
     this.stopSources();
   }
 
   async seek(timestamp: number): Promise<void> {
-    if (this.playing) {
+    if (this.clock.isRunning) {
       await this.start(timestamp);
     } else {
-      this.pausedTime = Math.max(0, Math.min(this.track.duration, timestamp));
+      this.clock.seek(timestamp);
     }
   }
 
@@ -221,7 +212,7 @@ export class DnxAudioPlayback implements AsyncDisposable {
       return;
     }
     this.closed = true;
-    this.playing = false;
+    this.clock.pause();
     this.scheduleGeneration += 1;
     this.stopSources();
     this.source.dispose();

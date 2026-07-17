@@ -3,6 +3,7 @@ export * from "./dnxCanvasRenderer.js";
 export * from "./dnxDecoder.js";
 export * from "./dnxFrame.js";
 export * from "./dnxMxf.js";
+export * from "./dnxPlaybackClock.js";
 export * from "./dnxMediabunny.js";
 export * from "./dnxRandomAccessDecoder.js";
 export * from "./dnxWebGpuRenderer.js";

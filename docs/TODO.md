@@ -97,7 +97,8 @@ Initial performance target:
 - [x] Support BWF-style little-endian 16/24/32-bit integer PCM with descriptor sample rates, channel counts, packet
   edit rates, seek offsets, and explicit unsupported-track rejection.
 - [ ] Add big-endian/AES3 PCM and stored-vs-valid-bit-depth handling when redistributable fixtures are available.
-- [ ] Introduce a reusable playback clock that coordinates video presentation with Web Audio.
+- [x] Introduce a reusable playback clock, exposed by `DnxAudioPlayback`, that lets video presentation follow the
+  same Web Audio timebase across start, pause, and seek.
 - [ ] Add drift correction, underrun recovery, pause/resume, seek, and end-of-stream behavior.
 - [ ] Define whether audio or wall clock is authoritative and document frame drop/repeat behavior when synchronization
   diverges.

@@ -138,6 +138,8 @@ export class DnxAudioPlayback implements AsyncDisposable {
     // (undocumented)
     [Symbol.asyncDispose](): Promise<void>;
     // (undocumented)
+    readonly clock: DnxPlaybackClock;
+    // (undocumented)
     close(): Promise<void>;
     // (undocumented)
     static create(bytes: Uint8Array, options?: DnxAudioPlaybackOptions): Promise<DnxAudioPlayback | null>;
@@ -426,6 +428,31 @@ export interface DnxPlaneCopyLayout {
     offset: number;
     // (undocumented)
     stride: number;
+}
+
+// @public (undocumented)
+export class DnxPlaybackClock {
+    constructor(options: DnxPlaybackClockOptions);
+    // (undocumented)
+    get currentTime(): number;
+    // (undocumented)
+    readonly duration: number;
+    // (undocumented)
+    get isRunning(): boolean;
+    // (undocumented)
+    pause(): number;
+    // (undocumented)
+    seek(timestamp: number): number;
+    // (undocumented)
+    start(timestamp?: number, clockTime?: number): void;
+}
+
+// @public (undocumented)
+export interface DnxPlaybackClockOptions {
+    // (undocumented)
+    duration: number;
+    // (undocumented)
+    now?: () => number;
 }
 
 // @public (undocumented)
