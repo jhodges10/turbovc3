@@ -35,6 +35,7 @@ All notable changes to turbovc3 will be documented here.
 - Cross-partition MXF validation for linked partitions, footer pointers, KAG alignment, RIP entries, and SID ownership.
 - Audio-authoritative video sync decisions, end-of-stream clock state, and opt-in audio underrun recovery.
 - Deployment and lifetime guidance for bundlers, CSP, cross-origin isolation, assets, and owned resources.
+- Release-tag publication now gates on API reports plus Chromium, Firefox, WebKit, Deno, and Bun runtime tests.
 
 ### Changed
 
