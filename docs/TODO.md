@@ -122,7 +122,7 @@ Initial performance target:
 - [ ] Add independent shader/oracle tests for Rec. 709, Rec. 2020 non-constant luminance, Rec. 2020 constant
   luminance, GBR, 10-bit, and 12-bit paths.
 - [ ] Define tone-mapping behavior for HDR-tagged content instead of relying on the destination surface implicitly.
-- [ ] Add frame-copy helpers with explicit strides, plane sizes, and destination layout validation.
+- [x] Add frame-copy helpers with explicit strides, plane sizes, destination sizing, and overlap/range validation.
 - [ ] Investigate a `VideoFrame` or WebCodecs-style bridge while preserving the reusable planar `Frame` API.
 - [ ] Make GPU texture reuse, canvas resizing, device loss, and renderer teardown part of the public renderer contract.
 

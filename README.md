@@ -167,6 +167,8 @@ The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
 Worker-backed `Decoder.decode()` calls execute concurrently but their promises settle in submission order. A filled
 `Frame` exposes coded/visible dimensions, original and converted pixel formats, square-pixel bare-frame metadata,
 numeric color fields with WebCodecs-style string getters, range, scan type, `isFilled`, and `toFilled()`.
+Use `copyLayout()`, `allocationSize()`, and `copyTo()` to copy coded plane rows into tightly packed or explicitly
+offset/strided destination storage; layouts are range-checked and may not overlap.
 
 ## Develop
 

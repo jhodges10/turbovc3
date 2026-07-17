@@ -55,6 +55,19 @@ export interface DecodeOptions {
   transfer?: boolean;
 }
 
+export interface DnxPlaneCopyLayout {
+  offset: number;
+  stride: number;
+}
+
+export interface DnxResolvedPlaneCopyLayout extends DnxPlaneCopyLayout {
+  label: string;
+  width: number;
+  height: number;
+  rowBytes: number;
+  byteLength: number;
+}
+
 export type FilledFrame = {
   [K in keyof Frame]: NonNullable<Frame[K]>;
 };
@@ -164,6 +177,48 @@ export class Frame implements Disposable {
 
   toFilled(): FilledFrame | null {
     return this.isFilled ? this as FilledFrame : null;
+  }
+
+  copyLayout(layout?: readonly DnxPlaneCopyLayout[]): readonly DnxResolvedPlaneCopyLayout[] {
+    return resolveFrameCopyLayout(this, layout);
+  }
+
+  allocationSize(layout?: readonly DnxPlaneCopyLayout[]): number {
+    const resolved = resolveFrameCopyLayout(this, layout);
+    return resolved.reduce(
+      (maximum, plane) => Math.max(maximum, plane.offset + plane.byteLength),
+      0
+    );
+  }
+
+  copyTo(
+    destination: Uint8Array,
+    layout?: readonly DnxPlaneCopyLayout[]
+  ): readonly DnxResolvedPlaneCopyLayout[] {
+    const sourceLayout = copyableFrameLayout(this);
+    const resolved = resolveFrameCopyLayout(this, layout);
+    const requiredBytes = resolved.reduce(
+      (maximum, plane) => Math.max(maximum, plane.offset + plane.byteLength),
+      0
+    );
+    if (destination.byteLength < requiredBytes) {
+      throw new RangeError(
+        `DNx frame copy requires ${requiredBytes} destination bytes, got ${destination.byteLength}.`
+      );
+    }
+    for (let planeIndex = 0; planeIndex < resolved.length; planeIndex += 1) {
+      const source = sourceLayout.planes[planeIndex];
+      const target = resolved[planeIndex];
+      for (let row = 0; row < target.height; row += 1) {
+        const sourceOffset = row * source.stride;
+        const destinationOffset = target.offset + row * target.stride;
+        destination.set(
+          source.bytes.subarray(sourceOffset, sourceOffset + target.rowBytes),
+          destinationOffset
+        );
+      }
+    }
+    return resolved;
   }
 
   get colorPrimariesString(): string | undefined {
@@ -453,6 +508,70 @@ function browserWorkerFactory(): DnxWorkerFactory | null {
     return null;
   }
   return (_kind, moduleUrl) => new Worker(moduleUrl, { type: "module" });
+}
+
+function copyableFrameLayout(frame: Frame): DnxFrameLayout {
+  if (frame.isLocked) {
+    throw new DnxFrameLockedError("Cannot copy a DNx output frame while decode is in progress.");
+  }
+  if (!frame.layout || !frame.frameData) {
+    throw new Error("Cannot copy an empty DNx output frame.");
+  }
+  return frame.layout;
+}
+
+function resolveFrameCopyLayout(
+  frame: Frame,
+  requested?: readonly DnxPlaneCopyLayout[]
+): DnxResolvedPlaneCopyLayout[] {
+  const sourceLayout = copyableFrameLayout(frame);
+  if (requested && requested.length !== sourceLayout.planes.length) {
+    throw new RangeError(
+      `DNx frame copy requires ${sourceLayout.planes.length} plane layouts, got ${requested.length}.`
+    );
+  }
+
+  let defaultOffset = 0;
+  const resolved = sourceLayout.planes.map((plane, index) => {
+    const rowBytes = plane.width * sourceLayout.bytesPerSample;
+    if (plane.stride < rowBytes || plane.bytes.byteLength < plane.stride * plane.height) {
+      throw new RangeError(`DNx source plane ${index} has an invalid stride or byte length.`);
+    }
+    const candidate = requested?.[index] ?? { offset: defaultOffset, stride: rowBytes };
+    if (
+      !Number.isSafeInteger(candidate.offset) ||
+      candidate.offset < 0 ||
+      !Number.isSafeInteger(candidate.stride) ||
+      candidate.stride < rowBytes
+    ) {
+      throw new RangeError(
+        `DNx destination plane ${index} requires a non-negative offset and stride of at least ${rowBytes}.`
+      );
+    }
+    const byteLength = candidate.stride * (plane.height - 1) + rowBytes;
+    if (!Number.isSafeInteger(byteLength) || !Number.isSafeInteger(candidate.offset + byteLength)) {
+      throw new RangeError(`DNx destination plane ${index} layout exceeds the safe integer range.`);
+    }
+    const result: DnxResolvedPlaneCopyLayout = {
+      offset: candidate.offset,
+      stride: candidate.stride,
+      label: plane.label,
+      width: plane.width,
+      height: plane.height,
+      rowBytes,
+      byteLength
+    };
+    defaultOffset = result.offset + result.byteLength;
+    return result;
+  });
+
+  const ordered = [...resolved].sort((left, right) => left.offset - right.offset);
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index].offset < ordered[index - 1].offset + ordered[index - 1].byteLength) {
+      throw new RangeError("DNx destination plane layouts must not overlap.");
+    }
+  }
+  return resolved;
 }
 
 function populateFrameHeader(frame: Frame, header: DnxFrameHeader): void {

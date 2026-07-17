@@ -126,6 +126,52 @@ const malformedDecoder = await module.Decoder.create({
   concurrency: 0
 });
 assert.equal(malformedDecoder instanceof Error, false);
+const copyFrame = new module.Frame();
+const copyDecoded = await malformedDecoder.decode(packetBytes, copyFrame);
+assert.equal(copyDecoded instanceof Error, false);
+const packedLayout = copyFrame.copyLayout();
+assert.equal(packedLayout.length, 3);
+assert.equal(packedLayout[0].offset, 0);
+assert.equal(packedLayout[1].offset, packedLayout[0].byteLength);
+assert.equal(copyFrame.allocationSize(), packedLayout.at(-1).offset + packedLayout.at(-1).byteLength);
+const packedCopy = new Uint8Array(copyFrame.allocationSize());
+assert.deepEqual(copyFrame.copyTo(packedCopy), packedLayout);
+assert.deepEqual(
+  packedCopy.subarray(0, packedLayout[0].rowBytes),
+  copyFrame.layout.planes[0].bytes.subarray(0, packedLayout[0].rowBytes)
+);
+let paddedOffset = 16;
+const paddedLayout = packedLayout.map((plane) => {
+  const result = { offset: paddedOffset, stride: plane.rowBytes + 8 };
+  paddedOffset += result.stride * (plane.height - 1) + plane.rowBytes + 8;
+  return result;
+});
+const paddedCopy = new Uint8Array(copyFrame.allocationSize(paddedLayout));
+const resolvedPaddedLayout = copyFrame.copyTo(paddedCopy, paddedLayout);
+assert.deepEqual(
+  paddedCopy.subarray(
+    resolvedPaddedLayout[0].offset + resolvedPaddedLayout[0].stride,
+    resolvedPaddedLayout[0].offset + resolvedPaddedLayout[0].stride + resolvedPaddedLayout[0].rowBytes
+  ),
+  copyFrame.layout.planes[0].bytes.subarray(
+    copyFrame.layout.planes[0].stride,
+    copyFrame.layout.planes[0].stride + resolvedPaddedLayout[0].rowBytes
+  )
+);
+assert.throws(() => copyFrame.copyTo(new Uint8Array(1)), RangeError);
+assert.throws(
+  () => copyFrame.copyLayout(packedLayout.map((plane) => ({ offset: plane.offset, stride: 1 }))),
+  RangeError
+);
+assert.throws(
+  () => copyFrame.copyLayout(packedLayout.map(() => ({ offset: 0, stride: 4096 }))),
+  /must not overlap/
+);
+assert.equal(copyFrame.acquireLock(), true);
+assert.throws(() => copyFrame.copyLayout(), { name: "DnxFrameLockedError" });
+copyFrame.releaseLock();
+copyFrame.clear();
+assert.throws(() => copyFrame.copyLayout(), /empty DNx output frame/);
 for (const truncatedLength of [0, 1, 639, 640, Math.floor(packetBytes.byteLength / 2)]) {
   const frame = new module.Frame();
   const result = await malformedDecoder.decode(packetBytes.subarray(0, truncatedLength), frame);
