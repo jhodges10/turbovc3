@@ -74,6 +74,18 @@ const abortedDecodeResult = await randomAccessDecoder.decode(0, { signal: aborte
 assert.equal(abortedDecodeResult.name, "AbortError");
 await randomAccessDecoder.close();
 
+const interlacedRandomAccessDecoder = await module.DnxRandomAccessDecoder.create(
+  new Blob([await readFile(path.join(repoRoot, "tests/fixtures/oracle_dnxhd_1080i2997_10bit_cid1241.mxf"))]),
+  { concurrency: 0 }
+);
+assert.equal(interlacedRandomAccessDecoder instanceof Error, false);
+const interlacedRandomAccessFrame = await interlacedRandomAccessDecoder.decode(0);
+assert.equal(interlacedRandomAccessFrame instanceof Error, false);
+assert.equal(interlacedRandomAccessFrame.scanType, "interlaced");
+assert.equal(interlacedRandomAccessFrame.metadata.scanType, "interlaced-top-field-first");
+assert.deepEqual(interlacedRandomAccessFrame.pixelAspectRatio, { numerator: 1, denominator: 1 });
+await interlacedRandomAccessDecoder.close();
+
 const abortedOpen = new AbortController();
 abortedOpen.abort();
 await assert.rejects(

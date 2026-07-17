@@ -198,8 +198,8 @@ Initial performance target:
   changes are visible.
 - [x] Publish recipes for Vite, Next.js, Webpack, CSP-constrained deployments, worker URLs, WASM asset hosting, and
   COOP/COEP headers.
-- [ ] Add a small maintained example application that demonstrates file open, decode, playback, audio, seek, and
-  backend diagnostics without moving codec behavior into the example.
+- [x] Add a maintained browser example for local MXF open, decode, Canvas2D playback, PCM audio-clock operation,
+  seeking, cache/I/O telemetry, and backend diagnostics without moving codec behavior into the example.
 - [ ] Decide whether to publish on npmjs in addition to GitHub Packages.
 - [ ] Document browser support, Mediabunny compatibility, security limits, and fixture provenance per release.
 - [ ] Add release automation for prereleases and a generated package/API compatibility report.

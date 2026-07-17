@@ -5,6 +5,7 @@ test-results/
 playwright-report/
 src/native/build/
 .vite/
+.example-build/
 .DS_Store
 wasm/generated/
 samples/**/*

@@ -6,6 +6,8 @@ All notable changes to turbovc3 will be documented here.
 
 ### Added
 
+- A maintained local browser example covering MXF file open, decode, Canvas2D playback, PCM audio clocking, seeking,
+  and backend/cache/I/O diagnostics.
 - Source-backed MXF and random-access decode for `Blob`, `File`, and custom sources, with abortable indexing and
   packet reads, progress/read telemetry, bounded compressed-packet caching, adjacent prefetch, and coalesced seeks.
 - Filled-frame inspection metadata and 12-bit 4:2:0 conversion/WebGPU support.
@@ -66,6 +68,8 @@ All notable changes to turbovc3 will be documented here.
 
 ### Changed
 
+- Random-access frames now preserve pixel aspect ratio and report woven interlaced scan state instead of always
+  claiming progressive output.
 - Rec. 2020 constant-luminance frames are now rejected by renderer/conversion capability checks rather than being
   silently processed with the non-constant-luminance matrix.
 - The root DNx MXF adapter now rejects operational patterns outside its documented OP1a/OPAtom scope explicitly;
