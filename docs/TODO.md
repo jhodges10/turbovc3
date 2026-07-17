@@ -80,7 +80,8 @@ Initial performance target:
   macroblock-count, payload-tail, and frame-size boundaries.
 - [x] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, short partition
   packs, index arrays, random index packs, and out-of-range random-index offsets.
-- [ ] Validate full partition-link chains and BodySID/IndexSID relationships across multi-partition fixtures.
+- [x] Validate partition-link/footer chains, KAG alignment, random-index membership/BodySID, and index-table
+  IndexSID/BodySID ownership across committed multi-partition fixtures.
 - [x] Add deterministic mutation targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing to PR
   CI, with a larger local campaign available through `npm run test:fuzz`.
 - [x] Enforce configurable MXF limits for metadata size, KLV count, track count, packet count, descriptor dimensions,
@@ -138,7 +139,8 @@ Initial performance target:
   deterministically.
 - [ ] Improve package/sequence/source-clip resolution for files with multiple material packages and source packages.
 - [ ] Expose timecode tracks and a stable API for mapping edit units to source and material timecode.
-- [ ] Validate KAG alignment, partition-link consistency, BodySID/IndexSID associations, and operational patterns.
+- [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.
+- [ ] Validate operational-pattern-specific structural requirements beyond the current OP1a/OPAtom fixtures.
 - [ ] Add fixtures from FFmpeg, Avid, Adobe, Resolve, and other generators where licensing permits redistribution.
 - [ ] Decide which additional operational patterns are in scope. Do not imply general OP1b or growing-file support
   until packet timelines are tested.

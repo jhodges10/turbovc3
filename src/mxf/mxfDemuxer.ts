@@ -214,6 +214,7 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
       );
     }
   }
+  validateMxfStructure(partitions, indexTableSegments, randomIndex);
 
   return {
     source,
@@ -229,6 +230,93 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     randomIndex,
     packets
   };
+}
+
+function validateMxfStructure(
+  partitions: readonly MxfPartition[],
+  indexes: readonly MxfIndexTableSegment[],
+  randomIndex: readonly MxfRandomIndexEntry[]
+): void {
+  if (partitions.length === 0) {
+    if (indexes.length > 0 || randomIndex.length > 0) {
+      throw new Error("MXF index metadata has no partition pack.");
+    }
+    return;
+  }
+
+  const byOffset = new Map(partitions.map((partition) => [partition.offset, partition]));
+  const footerOffsets = new Set(
+    partitions.filter((partition) => partition.kind === "footer").map((partition) => partition.offset)
+  );
+  for (let index = 0; index < partitions.length; index += 1) {
+    const partition = partitions[index];
+    if (partition.thisPartition !== partition.offset) {
+      throw new Error(
+        `MXF ${partition.kind} partition at ${partition.offset} declares ThisPartition ${partition.thisPartition}.`
+      );
+    }
+    if (index > 0 && partition.previousPartition !== partitions[index - 1].offset) {
+      throw new Error(
+        `MXF partition at ${partition.offset} links PreviousPartition ${partition.previousPartition}, expected ${partitions[index - 1].offset}.`
+      );
+    }
+    if (partition.footerPartition !== 0 && !footerOffsets.has(partition.footerPartition)) {
+      throw new Error(
+        `MXF partition at ${partition.offset} links FooterPartition ${partition.footerPartition}, which is not a parsed footer.`
+      );
+    }
+    if (partition.kagSize > 1 && partition.offset % partition.kagSize !== 0) {
+      throw new Error(
+        `MXF partition at ${partition.offset} is not aligned to its ${partition.kagSize}-byte KAG.`
+      );
+    }
+  }
+
+  if (randomIndex.length > 0) {
+    const ripOffsets = new Set<number>();
+    for (const entry of randomIndex) {
+      const partition = byOffset.get(entry.byteOffset);
+      if (!partition) {
+        throw new Error(`MXF random index offset ${entry.byteOffset} does not reference a parsed partition.`);
+      }
+      if (entry.bodySid !== partition.bodySid) {
+        throw new Error(
+          `MXF random index BodySID ${entry.bodySid} does not match partition ${entry.byteOffset} BodySID ${partition.bodySid}.`
+        );
+      }
+      if (ripOffsets.has(entry.byteOffset)) {
+        throw new Error(`MXF random index repeats partition offset ${entry.byteOffset}.`);
+      }
+      ripOffsets.add(entry.byteOffset);
+    }
+    for (const partition of partitions) {
+      if (!ripOffsets.has(partition.offset)) {
+        throw new Error(`MXF random index omits partition offset ${partition.offset}.`);
+      }
+    }
+  }
+
+  const bodySids = new Set(partitions.map((partition) => partition.bodySid).filter((sid) => sid !== 0));
+  for (const segment of indexes) {
+    let owner: MxfPartition | undefined;
+    for (const partition of partitions) {
+      if (partition.offset > segment.offset) {
+        break;
+      }
+      owner = partition;
+    }
+    if (!owner) {
+      throw new Error(`MXF index table at ${segment.offset} has no owning partition.`);
+    }
+    if (segment.indexSid === 0 || segment.indexSid !== owner.indexSid) {
+      throw new Error(
+        `MXF index table at ${segment.offset} uses IndexSID ${segment.indexSid}, but its partition uses ${owner.indexSid}.`
+      );
+    }
+    if (segment.bodySid === 0 || !bodySids.has(segment.bodySid)) {
+      throw new Error(`MXF index table at ${segment.offset} references unknown BodySID ${segment.bodySid}.`);
+    }
+  }
 }
 
 function reportProgress(options: MxfDemuxOptions, source: MxfSource, offset: number): void {
