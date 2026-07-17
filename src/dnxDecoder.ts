@@ -487,10 +487,20 @@ function populateDecodedFrame(
 
 function decodeErrorFrom(error: unknown): DnxInvalidDataError | DnxUnexpectedEofError | DnxOutOfMemoryError {
   const message = error instanceof Error ? error.message : String(error);
-  if (error instanceof RangeError || /out of memory|allocation failed/i.test(message)) {
+  const name = error instanceof Error ? error.name : "";
+  if (
+    error instanceof DnxOutOfMemoryError ||
+    name === "DnxOutOfMemoryError" ||
+    error instanceof RangeError ||
+    /out of memory|allocation failed/i.test(message)
+  ) {
     return new DnxOutOfMemoryError(message);
   }
-  if (/unexpected end|ended before|outside the packet|smaller than/i.test(message)) {
+  if (
+    error instanceof DnxUnexpectedEofError ||
+    name === "DnxUnexpectedEofError" ||
+    /unexpected end|ended before|outside the packet|smaller than/i.test(message)
+  ) {
     return new DnxUnexpectedEofError(message);
   }
   return new DnxInvalidDataError(message);

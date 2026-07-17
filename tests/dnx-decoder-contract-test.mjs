@@ -208,6 +208,23 @@ assert.equal(reusableFrame.isFilled, false);
 await transferDecoder.close();
 assert.equal(schedulingModule.fakeWorkerStats().packetTerminated, 3);
 
+const typedWorkerDecoder = await schedulingModule.Decoder.create({
+  dnxFourCc: "AVdh",
+  useSharedMemory: false,
+  concurrency: 1
+});
+assert.equal(typedWorkerDecoder instanceof Error, false);
+const workerFailurePacket = packetBytes.slice();
+workerFailurePacket[workerFailurePacket.byteLength - 1] = 0x5a;
+const typedWorkerFailure = await typedWorkerDecoder.decode(
+  workerFailurePacket,
+  new schedulingModule.Frame()
+);
+assert.equal(typedWorkerFailure.name, "DnxUnexpectedEofError");
+assert.match(typedWorkerFailure.message, /packet worker request 1/);
+assert.match(typedWorkerFailure.message, /simulated worker truncation/);
+await typedWorkerDecoder.close();
+
 const fallbackModule = await loadDecoderModule({ simulateSharedWorkerFailure: true });
 const fallbackDecoder = await fallbackModule.Decoder.create({
   dnxFourCc: "AVdh",
@@ -424,6 +441,18 @@ async function loadDecoderModule({
           return;
         }
         if (request.type !== "decode") {
+          return;
+        }
+        const packet = new Uint8Array(request.packet);
+        if (packet[packet.byteLength - 1] === 0x5a) {
+          this.dispatch("message", {
+            data: {
+              type: "error",
+              requestId: request.requestId,
+              errorName: "DnxUnexpectedEofError",
+              message: "simulated worker truncation"
+            }
+          });
           return;
         }
         const delays = [30, 0, 5];

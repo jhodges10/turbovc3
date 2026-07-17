@@ -206,7 +206,11 @@ export class DnxDecoderWorkerPool {
       this.currentMode = `worker-pool/${response.mode}`;
       pending.outcome = { ok: true, response };
     } else {
-      pending.outcome = { ok: false, error: new Error(response.message) };
+      const error = new Error(
+        `DNx packet worker request ${response.requestId}: ${response.message}`
+      );
+      error.name = response.errorName ?? "Error";
+      pending.outcome = { ok: false, error };
     }
     this.settleCompletedInOrder();
   }
