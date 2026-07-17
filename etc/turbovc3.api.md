@@ -401,6 +401,14 @@ export interface DnxPacketSummary {
 export type DnxPixelFormat = Extract<DecodePixelFormat, "yuv420p8" | "yuv420p10" | "yuv420p12" | "yuv422p8" | "yuv422p10" | "yuv422p12" | "yuv444p8" | "yuv444p10" | "yuv444p12" | "gbrp10" | "gbrp12">;
 
 // @public (undocumented)
+export interface DnxPlaneCopyLayout {
+    // (undocumented)
+    offset: number;
+    // (undocumented)
+    stride: number;
+}
+
+// @public (undocumented)
 export type DnxProfile = "dnxhd" | "dnxhr_lb" | "dnxhr_sq" | "dnxhr_hq" | "dnxhr_hqx" | "dnxhr_444";
 
 // @public (undocumented)
@@ -466,6 +474,20 @@ export class DnxReconstructionPendingError extends DnxNotSupportedError {
     constructor(message: string, state: unknown);
     // (undocumented)
     readonly state: unknown;
+}
+
+// @public (undocumented)
+export interface DnxResolvedPlaneCopyLayout extends DnxPlaneCopyLayout {
+    // (undocumented)
+    byteLength: number;
+    // (undocumented)
+    height: number;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    rowBytes: number;
+    // (undocumented)
+    width: number;
 }
 
 // @public (undocumented)
@@ -562,6 +584,8 @@ export class Frame implements Disposable {
     // (undocumented)
     acquireLock(): boolean;
     // (undocumented)
+    allocationSize(layout?: readonly DnxPlaneCopyLayout[]): number;
+    // (undocumented)
     clear(): void;
     // (undocumented)
     codedHeight: number | null;
@@ -583,6 +607,10 @@ export class Frame implements Disposable {
     colorTransfer: number | null;
     // (undocumented)
     get colorTransferString(): string | undefined;
+    // (undocumented)
+    copyLayout(layout?: readonly DnxPlaneCopyLayout[]): readonly DnxResolvedPlaneCopyLayout[];
+    // (undocumented)
+    copyTo(destination: Uint8Array, layout?: readonly DnxPlaneCopyLayout[]): readonly DnxResolvedPlaneCopyLayout[];
     // (undocumented)
     frameData: Uint8Array | null;
     // (undocumented)
