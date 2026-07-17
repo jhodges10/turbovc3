@@ -15,6 +15,8 @@ All notable changes to turbovc3 will be documented here.
 - Committed API Extractor reports and deterministic DNx/MXF mutation testing in CI.
 - A manifest-driven malformed DNx boundary corpus covering headers, rows, VLC, quantization headers, macroblock
   counts, payload tails, and frame sizes.
+- Strict rejection and tests for malformed MXF BER lengths, local sets, primer/index arrays, random index packs, and
+  out-of-range random-index offsets.
 
 ### Changed
 

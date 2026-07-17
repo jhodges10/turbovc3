@@ -11,6 +11,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const module = await loadMxfModule();
 
 await testSyntheticKlv(module);
+await testSyntheticMalformedKlv(module);
 await testLazyDnxAdapter(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testFixture(module, "samples/wip_gallery_page_1920x1080_60fps.mxf", {
   width: 1920,
@@ -234,6 +235,75 @@ async function testSyntheticKlv(module) {
   const truncated = bytes.slice();
   truncated[17] = 100;
   await assert.rejects(() => module.demuxMxf(truncated), /extends beyond/);
+}
+
+async function testSyntheticMalformedKlv(module) {
+  const essenceKey = "060e2b34010201010d01030115010c00";
+  const partitionKey = "060e2b34020501010d01020101020400";
+  const primerKey = "060e2b34020501010d01020101050100";
+  const prefaceKey = "060e2b34025301010d01010101012f00";
+  const indexKey = "060e2b34025301010d01020101100100";
+  const randomIndexKey = "060e2b34020501010d01020101110100";
+
+  await assert.rejects(
+    module.demuxMxf(withRawLength(essenceKey, [0x80], new Uint8Array(16))),
+    /indefinite BER length/
+  );
+  await assert.rejects(
+    module.demuxMxf(withRawLength(essenceKey, [0x89], new Uint8Array(16))),
+    /invalid 9-byte BER length/
+  );
+  await assert.rejects(
+    module.demuxMxf(klv(partitionKey, new Uint8Array(4))),
+    /partition pack.*only 4 bytes/
+  );
+
+  const invalidPrimer = new Uint8Array(8);
+  new DataView(invalidPrimer.buffer).setUint32(0, 1);
+  new DataView(invalidPrimer.buffer).setUint32(4, 18);
+  await assert.rejects(module.demuxMxf(klv(primerKey, invalidPrimer)), /Invalid MXF primer pack/);
+
+  const overflowingLocalSet = Uint8Array.from([0x3c, 0x0a, 0, 16, 1]);
+  await assert.rejects(module.demuxMxf(klv(prefaceKey, overflowingLocalSet)), /local tag.*overruns/);
+  await assert.rejects(
+    module.demuxMxf(klv(prefaceKey, Uint8Array.from([0, 0, 0, 0, 1]))),
+    /local set.*trailing bytes/
+  );
+
+  const invalidIndexArray = new Uint8Array(12);
+  invalidIndexArray.set([0x3f, 0x0a, 0, 8], 0);
+  const invalidIndexView = new DataView(invalidIndexArray.buffer);
+  invalidIndexView.setUint32(4, 1);
+  invalidIndexView.setUint32(8, 10);
+  await assert.rejects(module.demuxMxf(klv(indexKey, invalidIndexArray)), /Invalid MXF index entry array/);
+
+  await assert.rejects(
+    module.demuxMxf(klv(randomIndexKey, new Uint8Array(5))),
+    /Invalid MXF random index pack/
+  );
+  const outOfRangeRandomIndex = new Uint8Array(16);
+  const randomIndexView = new DataView(outOfRangeRandomIndex.buffer);
+  randomIndexView.setUint32(0, 1);
+  randomIndexView.setBigUint64(4, 10_000n);
+  randomIndexView.setUint32(12, 16);
+  await assert.rejects(
+    module.demuxMxf(klv(randomIndexKey, outOfRangeRandomIndex)),
+    /random index byte offset 10000 is outside/
+  );
+}
+
+function klv(key, payload) {
+  assert.equal(payload.byteLength < 128, true);
+  return withRawLength(key, [payload.byteLength], payload);
+}
+
+function withRawLength(key, lengthBytes, payload) {
+  const keyBytes = Uint8Array.from(key.match(/../g).map((value) => Number.parseInt(value, 16)));
+  const result = new Uint8Array(keyBytes.byteLength + lengthBytes.length + payload.byteLength);
+  result.set(keyBytes, 0);
+  result.set(lengthBytes, keyBytes.byteLength);
+  result.set(payload, keyBytes.byteLength + lengthBytes.length);
+  return result;
 }
 
 async function loadMxfModule() {
