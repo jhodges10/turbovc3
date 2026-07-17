@@ -126,7 +126,8 @@ Initial performance target:
 - [ ] Define tone-mapping behavior for HDR-tagged content instead of relying on the destination surface implicitly.
 - [x] Add frame-copy helpers with explicit strides, plane sizes, destination sizing, and overlap/range validation.
 - [ ] Investigate a `VideoFrame` or WebCodecs-style bridge while preserving the reusable planar `Frame` API.
-- [ ] Make GPU texture reuse, canvas resizing, device loss, and renderer teardown part of the public renderer contract.
+- [x] Make GPU texture reuse, canvas resizing, device loss callbacks/state, and idempotent renderer teardown part of
+  the public renderer contract.
 
 ## P1: General MXF Demuxing
 

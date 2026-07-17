@@ -194,6 +194,8 @@ export class DnxCanvasRenderer {
     // (undocumented)
     destroy(): void;
     // (undocumented)
+    get isDestroyed(): boolean;
+    // (undocumented)
     render(frame: DecodeFrame): void;
     // (undocumented)
     static supports(frame: DecodeFrame): boolean;
@@ -572,13 +574,23 @@ export class DnxUnexpectedEofError extends DnxInvalidDataError {
 // @public (undocumented)
 export class DnxWebGpuRenderer {
     // (undocumented)
-    static create(canvas: HTMLCanvasElement): Promise<DnxWebGpuRenderer | null>;
+    static create(canvas: HTMLCanvasElement, options?: DnxWebGpuRendererOptions): Promise<DnxWebGpuRenderer | null>;
     // (undocumented)
     destroy(): void;
+    // (undocumented)
+    get isDestroyed(): boolean;
+    // (undocumented)
+    get isDeviceLost(): boolean;
     // (undocumented)
     render(frame: DecodeFrame): void;
     // (undocumented)
     static supports(frame: DecodeFrame): boolean;
+}
+
+// @public (undocumented)
+export interface DnxWebGpuRendererOptions {
+    // (undocumented)
+    onDeviceLost?: (error: Error) => void;
 }
 
 // @public (undocumented)

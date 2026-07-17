@@ -29,6 +29,7 @@ All notable changes to turbovc3 will be documented here.
   the Web Audio timebase.
 - SHA-pinned Deno and Bun CI smoke coverage for direct ESM, TypeScript/native fallback selection, injected packet
   workers, decode, and teardown.
+- Public renderer lifetime state, WebGPU device-loss notification/failure behavior, and idempotent teardown contracts.
 
 ### Changed
 

@@ -31,6 +31,10 @@ export class DnxCanvasRenderer {
     return context ? new DnxCanvasRenderer(canvas, context) : null;
   }
 
+  get isDestroyed(): boolean {
+    return this.destroyed;
+  }
+
   render(frame: DecodeFrame): void {
     if (this.destroyed) {
       throw new Error("DNx canvas renderer is destroyed.");
