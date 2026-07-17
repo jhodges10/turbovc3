@@ -7,6 +7,7 @@ import {
   type CodecProbeInput,
   type DecodeEvent,
   type DecodeInput,
+  type DecodeColorSpace,
   type DecodePixelAspectRatio,
   type DecodeSession,
   type DecodeSessionOptions
@@ -34,6 +35,7 @@ interface PacketDecodeInput {
   frameIndex: number;
   timing?: PacketTiming;
   pixelAspectRatio?: DecodePixelAspectRatio;
+  colorSpace?: DecodeColorSpace;
 }
 
 export const dnxBuildTargets: readonly CodecBuildTarget[] = [
@@ -210,6 +212,7 @@ export class DnxDecodeSession implements DecodeSession {
 
         try {
           const pixelAspectRatio = pixelAspectRatioForTrack(dnxTrack);
+          const colorSpace = colorSpaceForTrack(dnxTrack, dnxTrack.firstPacket.header);
           const decodeInputs = dnxTrack.packets
             .slice(this.startFrame, rangeEnd(this.startFrame, this.maxFrames))
             .map((packet, index): PacketDecodeInput | null =>
@@ -219,7 +222,8 @@ export class DnxDecodeSession implements DecodeSession {
                     bytes: packet.data,
                     frameIndex: this.startFrame + index,
                     timing: packet,
-                    pixelAspectRatio
+                    pixelAspectRatio,
+                    colorSpace
                   }
                 : null
             );
@@ -469,7 +473,8 @@ export class DnxDecodeSession implements DecodeSession {
             packet.bytes,
             packet.frameIndex,
             packet.timing,
-            packet.pixelAspectRatio
+            packet.pixelAspectRatio,
+            packet.colorSpace
           )
         );
         nextToSchedule += 1;
@@ -490,7 +495,8 @@ export class DnxDecodeSession implements DecodeSession {
     packetData: Uint8Array,
     index: number,
     timing?: PacketTiming,
-    pixelAspectRatio?: DecodePixelAspectRatio
+    pixelAspectRatio?: DecodePixelAspectRatio,
+    colorSpace?: DecodeColorSpace
   ): Promise<PacketDecodeResult> {
     const decoder = await this.createDecoder(header);
 
@@ -506,7 +512,7 @@ export class DnxDecodeSession implements DecodeSession {
     }
 
     try {
-      return await this.decodePacketWithDecoder(decoder, header, packetData, index, timing, pixelAspectRatio);
+      return await this.decodePacketWithDecoder(decoder, header, packetData, index, timing, pixelAspectRatio, colorSpace);
     } finally {
       await decoder.close();
     }
@@ -518,7 +524,8 @@ export class DnxDecodeSession implements DecodeSession {
     packetData: Uint8Array,
     index: number,
     timing?: PacketTiming,
-    pixelAspectRatio?: DecodePixelAspectRatio
+    pixelAspectRatio?: DecodePixelAspectRatio,
+    colorSpace?: DecodeColorSpace
   ): Promise<PacketDecodeResult> {
     const frame = new Frame();
     try {
@@ -549,7 +556,7 @@ export class DnxDecodeSession implements DecodeSession {
             width: result.visibleWidth,
             height: result.visibleHeight,
             format: result.pixelFormat,
-            colorSpace: dnxColorSpaceForHeader(result.header),
+            colorSpace: colorSpace ?? dnxColorSpaceForHeader(result.header),
             pixelAspectRatio: pixelAspectRatio ?? {
               numerator: result.pixelAspectRatio.num,
               denominator: result.pixelAspectRatio.den
@@ -592,6 +599,43 @@ function pixelAspectRatioForTrack(track: {
   }
   const divisor = greatestCommonDivisor(numerator, denominator);
   return { numerator: numerator / divisor, denominator: denominator / divisor };
+}
+
+const COLOR_PRIMARIES = ["bt709", "bt470bg", "smpte170m", "bt2020", "smpte432"] as const;
+const COLOR_TRANSFERS = ["bt709", "smpte170m", "linear", "iec61966-2-1", "pq", "hlg"] as const;
+const COLOR_MATRICES = ["rgb", "bt709", "bt470bg", "smpte170m", "bt2020-ncl", "bt2020-cl"] as const;
+
+function colorSpaceForTrack(
+  track: {
+    colorSpace: {
+      primaries: string | null;
+      transfer: string | null;
+      matrix: string | null;
+      fullRange: boolean | null;
+    };
+  },
+  header: ParsedDnxFrameHeader
+): DecodeColorSpace {
+  const fallback = dnxColorSpaceForHeader(header);
+  return {
+    primaries: includesString(COLOR_PRIMARIES, track.colorSpace.primaries)
+      ? track.colorSpace.primaries
+      : fallback.primaries,
+    transfer: includesString(COLOR_TRANSFERS, track.colorSpace.transfer)
+      ? track.colorSpace.transfer
+      : fallback.transfer,
+    matrix: includesString(COLOR_MATRICES, track.colorSpace.matrix)
+      ? track.colorSpace.matrix
+      : fallback.matrix,
+    fullRange: track.colorSpace.fullRange ?? fallback.fullRange
+  };
+}
+
+function includesString<const Values extends readonly string[]>(
+  values: Values,
+  value: string | null
+): value is Values[number] {
+  return value !== null && (values as readonly string[]).includes(value);
 }
 
 function greatestCommonDivisor(left: number, right: number): number {

@@ -46,10 +46,14 @@ export interface DecodePlane {
   bytes: Uint8Array;
 }
 
+export type DecodeColorPrimaries = "bt709" | "bt470bg" | "smpte170m" | "bt2020" | "smpte432" | "unspecified";
+export type DecodeColorTransfer = "bt709" | "smpte170m" | "linear" | "iec61966-2-1" | "pq" | "hlg" | "unspecified";
+export type DecodeColorMatrix = "rgb" | "bt709" | "bt470bg" | "smpte170m" | "bt2020-ncl" | "bt2020-cl" | "unspecified";
+
 export interface DecodeColorSpace {
-  primaries: "bt709" | "bt2020" | "unspecified";
-  transfer: "bt709" | "unspecified";
-  matrix: "bt709" | "bt2020-ncl" | "bt2020-cl" | "unspecified";
+  primaries: DecodeColorPrimaries;
+  transfer: DecodeColorTransfer;
+  matrix: DecodeColorMatrix;
   fullRange: boolean;
 }
 

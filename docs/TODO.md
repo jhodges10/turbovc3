@@ -152,8 +152,8 @@ Initial performance target:
 
 ## P1: Color and Frame Interoperability
 
-- [ ] Expand color metadata beyond the current Rec. 709/Rec. 2020 matrix mapping to preserve primaries, transfer,
-  matrix, range, and chromaticity information when present.
+- [x] Preserve MOV color primaries, transfer, matrix, and range metadata through codec-session frame events, with DNx
+  header metadata as the per-field fallback; chromaticity coordinates are not exposed by the current container API.
 - [ ] Add independent shader/oracle tests for Rec. 709, Rec. 2020 non-constant luminance, Rec. 2020 constant
   luminance, GBR, 10-bit, and 12-bit paths.
 - [ ] Define tone-mapping behavior for HDR-tagged content instead of relying on the destination surface implicitly.

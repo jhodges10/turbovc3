@@ -14,12 +14,18 @@ export const createNodeWorker: DnxWorkerFactory;
 export interface DecodeColorSpace {
     // (undocumented)
     fullRange: boolean;
+    // Warning: (ae-forgotten-export) The symbol "DecodeColorMatrix" needs to be exported by the entry point node.d.ts
+    //
     // (undocumented)
-    matrix: "bt709" | "bt2020-ncl" | "bt2020-cl" | "unspecified";
+    matrix: DecodeColorMatrix;
+    // Warning: (ae-forgotten-export) The symbol "DecodeColorPrimaries" needs to be exported by the entry point node.d.ts
+    //
     // (undocumented)
-    primaries: "bt709" | "bt2020" | "unspecified";
+    primaries: DecodeColorPrimaries;
+    // Warning: (ae-forgotten-export) The symbol "DecodeColorTransfer" needs to be exported by the entry point node.d.ts
+    //
     // (undocumented)
-    transfer: "bt709" | "unspecified";
+    transfer: DecodeColorTransfer;
 }
 
 // @public (undocumented)
@@ -580,6 +586,13 @@ export interface DnxTrackInspection {
     codedHeight: number;
     // (undocumented)
     codedWidth: number;
+    // (undocumented)
+    colorSpace: {
+        primaries: string | null;
+        transfer: string | null;
+        matrix: string | null;
+        fullRange: boolean | null;
+    };
     // (undocumented)
     displayHeight: number;
     // (undocumented)

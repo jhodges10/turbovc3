@@ -18,6 +18,8 @@ All notable changes to turbovc3 will be documented here.
   Emscripten-IDCT, and FFmpeg outputs.
 - Codec-session frame events now retain decoder scan type and fall back to bitstream sample-aspect metadata when the
   container does not declare a display aspect.
+- MOV color primaries, transfer, matrix, and range metadata now flow through codec-session frame events, with
+  per-field DNx header fallbacks and a tagged Rec. 2020/PQ remux contract.
 - Material-package compositions with nested Sequence/SourceClip traversal and source-package/track resolution, while
   preserving alternate edits for caller selection.
 - OP1a/OPAtom DNx adapter validation for required material compositions, resolvable DNx SourceClip references, and
