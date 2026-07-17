@@ -13,7 +13,7 @@ import {
   type DnxReconstructionState
 } from "./dnxReconstruction.js";
 import { createDnxIdctKernel, type DnxIdctKernel, type DnxIdctMode } from "./dnxIdctKernel.js";
-import { decodeDnxScalarFrame } from "./dnxScalarDecoder.js";
+import { decodeDnxScalarFrame, supportsDnxScalarCid } from "./dnxScalarDecoder.js";
 import { convertDnxFrameLayout, selectDnxOutputFormat } from "./dnxPixelConversion.js";
 import { DnxSharedRowDecoder } from "./dnxSharedRowDecoder.js";
 import { createDnxZigRowDecoder, type DnxRowDecoder } from "./dnxZigRowDecoder.js";
@@ -452,13 +452,7 @@ export class Decoder implements AsyncDisposable {
 
       try {
         populateFrameHeader(frame, header);
-        if (
-          header.cid === 1235 ||
-          header.cid === 1237 ||
-          header.cid === 1251 ||
-          header.cid === 1256 ||
-          (header.cid >= 1270 && header.cid <= 1274)
-        ) {
+        if (supportsDnxScalarCid(header.cid)) {
           const decoded = decodeDnxScalarFrame(packetData, header, this.idctKernel ?? undefined, this.rowDecoder);
           const layout = convertDnxFrameLayout(decoded.layout, sourcePixelFormat, outputPixelFormat, header.colorSpace);
           frame.pixelFormat = outputPixelFormat;

@@ -19,6 +19,36 @@ mkdir -p "$OUTPUT_DIR"
   "$OUTPUT_DIR/oracle_dnxhd_720p30_8bit_cid1251.mxf"
 
 "$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p10le -c:v dnxhd -profile:v dnxhd -b:v 90M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_720p30_10bit_cid1250.mxf"
+
+"$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 75M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_720p30_8bit_cid1252.mxf"
+
+"$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1920x1080:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 45M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_1080p30_8bit_cid1253.mxf"
+
+"$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=960x720:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 42M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_960x720p30_8bit_cid1258.mxf"
+
+"$FFMPEG" -v error -y \
+  -f lavfi -i "testsrc2=size=1440x1080:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 100M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf"
+
+"$FFMPEG" -v error -y \
   -f lavfi -i "testsrc2=size=1920x1080:rate=30:duration=1" \
   -frames:v 1 -pix_fmt yuv422p10le -c:v dnxhd -profile:v dnxhr_hqx -an \
   -metadata creation_time=1970-01-01T00:00:00Z \
@@ -46,6 +76,11 @@ mkdir -p "$OUTPUT_DIR"
 
 for fixture in \
   "oracle_dnxhd_720p30_8bit_cid1251.mxf yuv422p" \
+  "oracle_dnxhd_720p30_10bit_cid1250.mxf yuv422p10le" \
+  "oracle_dnxhd_720p30_8bit_cid1252.mxf yuv422p" \
+  "oracle_dnxhd_1080p30_8bit_cid1253.mxf yuv422p" \
+  "oracle_dnxhd_960x720p30_8bit_cid1258.mxf yuv422p" \
+  "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf yuv422p" \
   "oracle_dnxhr_hqx_1080p30_10bit_cid1271.mov yuv422p10le" \
   "oracle_dnxhr_444_1080p30_10bit.mov yuv444p10le"
 do

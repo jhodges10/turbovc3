@@ -21,6 +21,14 @@ const source = args.source ?? process.env.DNX_SOURCE ?? firstExisting([
 
 const supportedFixtures = [
   {
+    name: "dnxhd-720p30-10bit-cid1250",
+    output: path.join(fixtureDir, "oracle_dnxhd_720p30_10bit_cid1250.mxf"),
+    vf: "fps=30,scale=1280:720,format=yuv422p10le",
+    bitrate: "90M",
+    oraclePixelFormat: "yuv422p10le",
+    expected: { cid: 1250, width: 1280, height: 720, pixelFormat: "yuv422p10", frameCount: frames }
+  },
+  {
     name: "dnxhd-720p30-8bit-cid1251",
     output: path.join(fixtureDir, "oracle_dnxhd_720p30_8bit_cid1251.mxf"),
     vf: "fps=30,scale=1280:720,format=yuv422p",
@@ -32,6 +40,34 @@ const supportedFixtures = [
       pixelFormat: "yuv422p8",
       frameCount: frames
     }
+  },
+  {
+    name: "dnxhd-720p30-8bit-cid1252",
+    output: path.join(fixtureDir, "oracle_dnxhd_720p30_8bit_cid1252.mxf"),
+    vf: "fps=30,scale=1280:720,format=yuv422p",
+    bitrate: "75M",
+    expected: { cid: 1252, width: 1280, height: 720, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
+    name: "dnxhd-1080p30-8bit-cid1253",
+    output: path.join(fixtureDir, "oracle_dnxhd_1080p30_8bit_cid1253.mxf"),
+    vf: "fps=30,scale=1920:1080,format=yuv422p",
+    bitrate: "45M",
+    expected: { cid: 1253, width: 1920, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
+    name: "dnxhd-960x720p30-8bit-cid1258",
+    output: path.join(fixtureDir, "oracle_dnxhd_960x720p30_8bit_cid1258.mxf"),
+    vf: "fps=30,scale=960:720,format=yuv422p",
+    bitrate: "42M",
+    expected: { cid: 1258, width: 960, height: 720, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
+    name: "dnxhd-1440x1080p30-8bit-cid1259",
+    output: path.join(fixtureDir, "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf"),
+    vf: "fps=30,scale=1440:1080,format=yuv422p",
+    bitrate: "100M",
+    expected: { cid: 1259, width: 1440, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
   },
   {
     name: "dnxhd-1080p30-8bit-cid1237",
