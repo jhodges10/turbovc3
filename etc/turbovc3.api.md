@@ -136,6 +136,8 @@ export class DnxAudioPlayback implements AsyncDisposable {
     // (undocumented)
     static create(bytes: Uint8Array, options?: DnxAudioPlaybackOptions): Promise<DnxAudioPlayback | null>;
     // (undocumented)
+    static createFromMxf(input: MxfSourceInput | MxfDemuxer, options?: DnxAudioPlaybackOptions): Promise<DnxAudioPlayback | null>;
+    // (undocumented)
     get currentTime(): number;
     // (undocumented)
     get isClockRunning(): boolean;

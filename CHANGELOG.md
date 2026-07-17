@@ -23,6 +23,8 @@ All notable changes to turbovc3 will be documented here.
   shared-row workers, and missing-asset TypeScript fallback.
 - A portable `DnxCanvasRenderer` fallback with deterministic 8/10/12-bit YUV and GBR conversion tests, including
   real Canvas2D pixel reads in all three browser engines.
+- `DnxAudioPlayback.createFromMxf()` for BWF-style little-endian 16/24/32-bit PCM packet playback with descriptor
+  sample-rate/channel metadata and the existing play, pause, seek, and clock contract.
 
 ### Changed
 

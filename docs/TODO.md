@@ -93,8 +93,10 @@ Initial performance target:
 
 ## P1: Audio and A/V Playback
 
-- [ ] Extend `DnxAudioPlayback` beyond MOV/MP4 so it can consume PCM packets and metadata from `MxfDemuxer`.
-- [ ] Support common MXF PCM layouts, including endian, valid-bit-depth, channel-count, and edit-rate differences.
+- [x] Extend `DnxAudioPlayback` beyond MOV/MP4 so it can consume PCM packets and metadata from `MxfDemuxer`.
+- [x] Support BWF-style little-endian 16/24/32-bit integer PCM with descriptor sample rates, channel counts, packet
+  edit rates, seek offsets, and explicit unsupported-track rejection.
+- [ ] Add big-endian/AES3 PCM and stored-vs-valid-bit-depth handling when redistributable fixtures are available.
 - [ ] Introduce a reusable playback clock that coordinates video presentation with Web Audio.
 - [ ] Add drift correction, underrun recovery, pause/resume, seek, and end-of-stream behavior.
 - [ ] Define whether audio or wall clock is authoritative and document frame drop/repeat behavior when synchronization
