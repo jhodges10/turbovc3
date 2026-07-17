@@ -21,6 +21,7 @@ All notable changes to turbovc3 will be documented here.
 - Decoder teardown rejects new work and drains accepted decode/source operations before terminating workers.
 - Truncated packets with valid DNx headers now report `DnxUnexpectedEofError` instead of a capability error.
 - Published worker modules use direct-ESM-compatible `.js` specifiers.
+- Worker failures preserve decoder error categories and include packet-request or shared-row context.
 
 ## [0.1.0] - 2026-07-10
 

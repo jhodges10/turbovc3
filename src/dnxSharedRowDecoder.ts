@@ -17,6 +17,7 @@ interface WorkerSlot {
 }
 
 interface PendingRow {
+  row: number;
   resolve(): void;
   reject(error: Error): void;
 }
@@ -153,7 +154,7 @@ export class DnxSharedRowDecoder {
       const slot = availableSlots[index % availableSlots.length];
       const requestId = this.nextRequestId++;
       return new Promise<void>((resolve, reject) => {
-        this.pendingRows.set(requestId, { resolve, reject });
+        this.pendingRows.set(requestId, { row: row.row, resolve, reject });
         const request: DnxSharedRowWorkerRequest = {
           type: "decode-row",
           requestId,
@@ -220,7 +221,9 @@ export class DnxSharedRowDecoder {
     if (response.type === "decoded-row") {
       pending.resolve();
     } else {
-      pending.reject(new Error(response.message));
+      pending.reject(new Error(
+        `DNx shared row ${pending.row} request ${response.requestId}: ${response.message}`
+      ));
     }
   }
 

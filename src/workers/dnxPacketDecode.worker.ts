@@ -47,7 +47,12 @@ async function handleRequest(request: DnxPacketWorkerRequest): Promise<void> {
   try {
     const result = await decoder.decode(new Uint8Array(request.packet), frame);
     if (result instanceof Error) {
-      post({ type: "error", requestId: request.requestId, message: result.message });
+      post({
+        type: "error",
+        requestId: request.requestId,
+        errorName: result.name,
+        message: result.message
+      });
       return;
     }
     const contents: DnxWorkerFrameContents = {
@@ -75,6 +80,7 @@ async function handleRequest(request: DnxPacketWorkerRequest): Promise<void> {
     post({
       type: "error",
       requestId: request.requestId,
+      errorName: error instanceof Error ? error.name : undefined,
       message: error instanceof Error ? error.message : String(error)
     });
   }

@@ -49,5 +49,6 @@ export type DnxPacketWorkerResponse =
   | {
       type: "error";
       requestId?: number;
+      errorName?: string;
       message: string;
     };

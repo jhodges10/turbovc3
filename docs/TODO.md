@@ -85,7 +85,7 @@ Initial performance target:
   CI, with a larger local campaign available through `npm run test:fuzz`.
 - [x] Enforce configurable MXF limits for metadata size, KLV count, track count, packet count, descriptor dimensions,
   and resynchronization work. Native frame allocation limits remain tracked under the performance gates.
-- [ ] Verify worker and main-thread errors preserve stable typed error categories and useful packet/frame context.
+- [x] Verify worker and main-thread errors preserve stable typed error categories and useful packet/row context.
 - [ ] Expand oracle comparisons to cover frame edges, coded padding, odd visible dimensions, and all output plane
   strides.
 - [ ] Run sanitizer-backed native tests where the Zig/Emscripten toolchains support them.
