@@ -4,6 +4,8 @@ import { essenceSlices, indexEntryAt } from "./mxfIndex.js";
 import type {
   MxfDemuxResult,
   MxfDescriptor,
+  MxfComposition,
+  MxfCompositionTrackKind,
   MxfEssenceElement,
   MxfIndexEntry,
   MxfIndexTableSegment,
@@ -104,6 +106,10 @@ export class MxfDemuxer {
 
   get tracks(): readonly MxfTrack[] {
     return this.result.tracks;
+  }
+
+  get compositions(): readonly MxfComposition[] {
+    return this.result.compositions;
   }
 
   get packets(): readonly MxfPacket[] {
@@ -212,8 +218,13 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     enforceDimensions(descriptor, limits);
   }
   const tracks = buildTracks(metadataSets, descriptors, essenceElements);
+  const compositions = buildCompositions(metadataSets, tracks);
   const timecodeTracks = buildTimecodeTracks(metadataSets);
-  enforceCount("tracks", tracks.length + timecodeTracks.length, limits.maxTracks);
+  enforceCount(
+    "tracks",
+    tracks.length + timecodeTracks.length + compositions.reduce((sum, value) => sum + value.tracks.length, 0),
+    limits.maxTracks
+  );
   const packets = buildPackets(tracks, essenceElements, indexTableSegments);
   enforceCount("packets", packets.length, limits.maxPackets);
   for (const track of tracks) {
@@ -237,6 +248,7 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
     metadataSets,
     descriptors,
     tracks,
+    compositions,
     timecodeTracks,
     essenceElements,
     indexTableSegments,
@@ -597,17 +609,21 @@ function buildTracks(
   );
   const bodySidByTrackUid = new Map<string, number>();
   const descriptorUidsByTrackUid = new Map<string, ReadonlySet<string>>();
+  const packageUidByTrackUid = new Map<string, string>();
+  const packageInstanceUidByTrackUid = new Map<string, string | null>();
   for (const essenceContainerData of metadataSets.filter((set) => set.type === "EssenceContainerData")) {
     const packageUid = itemHex(essenceContainerData, 0x2701);
     const bodySid = itemU32(essenceContainerData, 0x3f07);
     const sourcePackage = packageUid ? sourcePackagesByPackageUid.get(packageUid) : undefined;
-    if (!sourcePackage || !bodySid) {
+    if (!packageUid || !sourcePackage || !bodySid) {
       continue;
     }
     const descriptorUids = packageDescriptorUids(sourcePackage, setsByUid);
     for (const trackUid of itemReferenceArray(sourcePackage, 0x4403)) {
       bodySidByTrackUid.set(trackUid, bodySid);
       descriptorUidsByTrackUid.set(trackUid, descriptorUids);
+      packageUidByTrackUid.set(trackUid, packageUid);
+      packageInstanceUidByTrackUid.set(trackUid, sourcePackage.instanceUid);
     }
   }
   const candidates = metadataSets
@@ -646,7 +662,11 @@ function buildTracks(
           sequenceUid,
           descriptor,
           bodySid: elements[0].bodySid,
-          packetCount: elements.length
+          packetCount: elements.length,
+          sourcePackageUid: set.instanceUid ? packageUidByTrackUid.get(set.instanceUid) ?? null : null,
+          sourcePackageInstanceUid: set.instanceUid
+            ? packageInstanceUidByTrackUid.get(set.instanceUid) ?? null
+            : null
         }));
     })
     .filter((track) => track.packetCount > 0);
@@ -676,7 +696,9 @@ function buildTracks(
       sequenceUid: null,
       descriptor: null,
       bodySid: elements[0]?.bodySid ?? null,
-      packetCount: elements.length
+      packetCount: elements.length,
+      sourcePackageUid: null,
+      sourcePackageInstanceUid: null
     });
   }
   return [...byTrack.values()];
@@ -699,6 +721,95 @@ function packageDescriptorUids(
 
 function trackKey(bodySid: number, trackNumber: number): string {
   return `${bodySid}:${trackNumber}`;
+}
+
+function buildCompositions(
+  metadataSets: readonly MxfMetadataSet[],
+  tracks: readonly MxfTrack[]
+): MxfComposition[] {
+  const setsByUid = new Map(
+    metadataSets
+      .filter((set): set is MxfMetadataSet & { instanceUid: string } => set.instanceUid !== null)
+      .map((set) => [set.instanceUid, set])
+  );
+  return metadataSets
+    .filter((set) => set.type === "MaterialPackage")
+    .map((packageSet): MxfComposition => ({
+      packageUid: itemHex(packageSet, 0x4401),
+      packageInstanceUid: packageSet.instanceUid,
+      name: itemString(packageSet, 0x4402),
+      tracks: itemReferenceArray(packageSet, 0x4403).flatMap((trackUid) => {
+        const trackSet = setsByUid.get(trackUid);
+        if (!trackSet || (trackSet.type !== "Track" && trackSet.type !== "StaticTrack")) {
+          return [];
+        }
+        const id = itemU32(trackSet, 0x4801);
+        const editRate = itemRational(trackSet, 0x4b01);
+        const sequenceUid = itemUid(trackSet, 0x4803);
+        const sequence = sequenceUid ? setsByUid.get(sequenceUid) : null;
+        if (id === null || !editRate || !sequenceUid || sequence?.type !== "Sequence") {
+          return [];
+        }
+        const dataDefinitionUl = itemHex(sequence, 0x0201);
+        const sourceClips = flattenSourceClips(sequence, setsByUid).map((clipSet) => {
+          const rawPackageUid = itemHex(clipSet, 0x1101);
+          const sourcePackageUid = rawPackageUid && !/^0+$/.test(rawPackageUid) ? rawPackageUid : null;
+          const sourceTrackId = itemU32(clipSet, 0x1102);
+          return {
+            instanceUid: clipSet.instanceUid,
+            dataDefinitionUl: itemHex(clipSet, 0x0201),
+            duration: itemI64(clipSet, 0x0202),
+            startPosition: itemI64(clipSet, 0x1201) ?? 0,
+            sourcePackageUid,
+            sourceTrackId,
+            sourceTrack: sourcePackageUid && sourceTrackId !== null
+              ? tracks.find((track) =>
+                  track.sourcePackageUid === sourcePackageUid && track.id === sourceTrackId
+                ) ?? null
+              : null
+          };
+        });
+        const numberBytes = item(trackSet.items, 0x4804);
+        const kind = sourceClips.find((clip) => clip.sourceTrack)?.sourceTrack?.kind
+          ?? kindForDataDefinition(dataDefinitionUl);
+        return [{
+          id,
+          number: numberBytes && numberBytes.length >= 4 ? readU32BE(numberBytes, 0) : null,
+          name: itemString(trackSet, 0x4802),
+          kind,
+          editRate,
+          origin: itemI64(trackSet, 0x4b02) ?? 0,
+          duration: itemI64(sequence, 0x0202),
+          sequenceUid,
+          sourceClips
+        }];
+      })
+    }));
+}
+
+function flattenSourceClips(
+  sequence: MxfMetadataSet,
+  setsByUid: ReadonlyMap<string, MxfMetadataSet>,
+  visited: ReadonlySet<string> = new Set()
+): MxfMetadataSet[] {
+  if (sequence.instanceUid && visited.has(sequence.instanceUid)) {
+    throw new Error(`MXF sequence graph contains a cycle at ${sequence.instanceUid}.`);
+  }
+  const nextVisited = new Set(visited);
+  if (sequence.instanceUid) nextVisited.add(sequence.instanceUid);
+  return itemReferenceArray(sequence, 0x1001).flatMap((componentUid) => {
+    const component = setsByUid.get(componentUid);
+    if (component?.type === "SourceClip") return [component];
+    if (component?.type === "Sequence") return flattenSourceClips(component, setsByUid, nextVisited);
+    return [];
+  });
+}
+
+function kindForDataDefinition(value: string | null): MxfCompositionTrackKind {
+  if (value?.endsWith("0103020101000000")) return "timecode";
+  if (value?.endsWith("0103020201000000")) return "video";
+  if (value?.endsWith("0103020202000000")) return "audio";
+  return "unknown";
 }
 
 function buildTimecodeTracks(metadataSets: readonly MxfMetadataSet[]): MxfTimecodeTrack[] {

@@ -89,6 +89,39 @@ export interface MxfTrack {
   descriptor: MxfDescriptor | null;
   bodySid: number | null;
   packetCount: number;
+  sourcePackageUid: string | null;
+  sourcePackageInstanceUid: string | null;
+}
+
+export interface MxfSourceClip {
+  instanceUid: string | null;
+  dataDefinitionUl: string | null;
+  duration: number | null;
+  startPosition: number;
+  sourcePackageUid: string | null;
+  sourceTrackId: number | null;
+  sourceTrack: MxfTrack | null;
+}
+
+export type MxfCompositionTrackKind = MxfTrackKind | "timecode";
+
+export interface MxfCompositionTrack {
+  id: number;
+  number: number | null;
+  name: string | null;
+  kind: MxfCompositionTrackKind;
+  editRate: MxfRational;
+  origin: number;
+  duration: number | null;
+  sequenceUid: string;
+  sourceClips: readonly MxfSourceClip[];
+}
+
+export interface MxfComposition {
+  packageUid: string | null;
+  packageInstanceUid: string | null;
+  name: string | null;
+  tracks: readonly MxfCompositionTrack[];
 }
 
 export type MxfPackageKind = "material" | "source";
@@ -174,6 +207,7 @@ export interface MxfDemuxResult {
   metadataSets: readonly MxfMetadataSet[];
   descriptors: readonly MxfDescriptor[];
   tracks: readonly MxfTrack[];
+  compositions: readonly MxfComposition[];
   timecodeTracks: readonly MxfTimecodeTrack[];
   essenceElements: readonly MxfEssenceElement[];
   indexTableSegments: readonly MxfIndexTableSegment[];

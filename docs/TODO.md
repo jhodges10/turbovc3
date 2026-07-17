@@ -169,7 +169,8 @@ Initial performance target:
   deterministically.
 - [x] Resolve essence tracks by BodySID and source-package EssenceContainerData links so duplicate track numbers and
   descriptor track IDs in separate source packages remain distinct.
-- [ ] Resolve material-package sequences and SourceClip chains when files contain multiple alternate compositions.
+- [x] Preserve every material package as a composition, flatten nested Sequence/SourceClip chains, and resolve clips
+  to BodySID-aware source tracks without guessing which alternate composition is primary.
 - [x] Expose material/source timecode tracks and a stable edit-unit mapping API with ordinary and drop-frame
   formatting, origins, duration, edit rates, and 24-hour wrapping.
 - [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.

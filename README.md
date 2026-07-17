@@ -146,7 +146,7 @@ jobs already accepted by the underlying decoder.
 | Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
 | Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
 | MOV/QuickTime | Through Mediabunny |
-| MXF | OP1a and OPAtom DNx essence; BodySID/source-package track identity; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
+| MXF | OP1a and OPAtom DNx essence; BodySID/source-package track identity; material compositions/SourceClips; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
 Rec. 2020 constant-luminance signaling is preserved in frame metadata but is not rendered or converted to YUV yet:
@@ -228,6 +228,8 @@ The supported root surface contains:
 
 Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
 The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
+`MxfDemuxer.compositions` preserves every material package, its tracks and nested Sequence components, and resolves
+each SourceClip to the BodySID-aware source track when that package is present; callers choose among alternate edits.
 The intended 1.0 boundaries and `0.x` compatibility policy are recorded in
 [the API stability guide](docs/api-stability.md).
 

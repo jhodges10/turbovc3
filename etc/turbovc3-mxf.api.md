@@ -30,6 +30,43 @@ export class MxfBufferSource implements MxfSource {
 }
 
 // @public (undocumented)
+export interface MxfComposition {
+    // (undocumented)
+    name: string | null;
+    // (undocumented)
+    packageInstanceUid: string | null;
+    // (undocumented)
+    packageUid: string | null;
+    // (undocumented)
+    tracks: readonly MxfCompositionTrack[];
+}
+
+// @public (undocumented)
+export interface MxfCompositionTrack {
+    // (undocumented)
+    duration: number | null;
+    // (undocumented)
+    editRate: MxfRational;
+    // (undocumented)
+    id: number;
+    // (undocumented)
+    kind: MxfCompositionTrackKind;
+    // (undocumented)
+    name: string | null;
+    // (undocumented)
+    number: number | null;
+    // (undocumented)
+    origin: number;
+    // (undocumented)
+    sequenceUid: string;
+    // (undocumented)
+    sourceClips: readonly MxfSourceClip[];
+}
+
+// @public (undocumented)
+export type MxfCompositionTrackKind = MxfTrackKind | "timecode";
+
+// @public (undocumented)
 export class MxfCountingSource implements MxfSource {
     constructor(source: MxfSource);
     // (undocumented)
@@ -46,6 +83,8 @@ export class MxfCountingSource implements MxfSource {
 export class MxfDemuxer {
     // (undocumented)
     get bytesRead(): number;
+    // (undocumented)
+    get compositions(): readonly MxfComposition[];
     // (undocumented)
     static open(input: MxfSourceInput, options?: MxfDemuxOptions): Promise<MxfDemuxer>;
     // (undocumented)
@@ -112,6 +151,8 @@ export interface MxfDemuxProgress {
 
 // @public (undocumented)
 export interface MxfDemuxResult {
+    // (undocumented)
+    compositions: readonly MxfComposition[];
     // (undocumented)
     descriptors: readonly MxfDescriptor[];
     // (undocumented)
@@ -373,6 +414,24 @@ export interface MxfSource {
 }
 
 // @public (undocumented)
+export interface MxfSourceClip {
+    // (undocumented)
+    dataDefinitionUl: string | null;
+    // (undocumented)
+    duration: number | null;
+    // (undocumented)
+    instanceUid: string | null;
+    // (undocumented)
+    sourcePackageUid: string | null;
+    // (undocumented)
+    sourceTrack: MxfTrack | null;
+    // (undocumented)
+    sourceTrackId: number | null;
+    // (undocumented)
+    startPosition: number;
+}
+
+// @public (undocumented)
 export type MxfSourceInput = MxfSource | Uint8Array | ArrayBuffer | Blob;
 
 // @public (undocumented)
@@ -448,6 +507,10 @@ export interface MxfTrack {
     packetCount: number;
     // (undocumented)
     sequenceUid: string | null;
+    // (undocumented)
+    sourcePackageInstanceUid: string | null;
+    // (undocumented)
+    sourcePackageUid: string | null;
 }
 
 // @public (undocumented)
