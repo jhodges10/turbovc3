@@ -102,6 +102,9 @@ and material timecode. FFmpeg 8 only muxes 48 kHz MXF audio, so other MXF sample
 audio tracks exist but none use the supported little-endian 16/24/32-bit PCM layout.
 
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
+The root adapter accepts OP1a and OPAtom operational-pattern labels and reports `DnxNotSupportedError` for other
+patterns. `@jhodges10/turbovc3/mxf` remains available for lower-level inspection without implying DNx playback
+support for every MXF operational pattern.
 
 For source-backed seeking without loading the complete MXF, use the random-access decoder. It keeps a bounded
 compressed-packet cache, can prefetch adjacent frames, reports indexing I/O, and coalesces rapid `seek()` calls so

@@ -162,6 +162,15 @@ async function testLazyDnxAdapter(module, relativePath) {
 
   const blobResult = await module.demuxDnxMxf(new Blob([bytes]));
   assert.ok(blobResult);
+  const parsed = await module.demuxMxf(bytes);
+  const firstPartitionKlv = parsed.klvPackets.find((packet) => packet.offset === parsed.partitions[0]?.offset);
+  assert.ok(firstPartitionKlv);
+  const unsupportedPattern = bytes.slice();
+  unsupportedPattern[firstPartitionKlv.valueOffset + 64 + 12] = 0x7f;
+  await assert.rejects(
+    module.demuxDnxMxf(unsupportedPattern),
+    /supports OP1a and OPAtom.*received/
+  );
   await assert.rejects(
     module.MxfDemuxer.open(bytes, { limits: { maxTracks: 1 } }),
     /tracks exceed the configured limit of 1/
