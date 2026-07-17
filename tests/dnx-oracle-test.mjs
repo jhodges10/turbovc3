@@ -29,6 +29,27 @@ const supportedFixtures = [
     expected: { cid: 1241, width: 1920, height: 1080, pixelFormat: "yuv422p10", frameCount: frames }
   },
   {
+    name: "dnxhd-1080i2997-8bit-cid1242",
+    output: path.join(fixtureDir, "oracle_dnxhd_1080i2997_8bit_cid1242.mxf"),
+    vf: "setfield=tff,format=yuv422p",
+    bitrate: "120M",
+    expected: { cid: 1242, width: 1920, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
+    name: "dnxhd-1080i2997-8bit-cid1243",
+    output: path.join(fixtureDir, "oracle_dnxhd_1080i2997_8bit_cid1243.mxf"),
+    vf: "setfield=tff,format=yuv422p",
+    bitrate: "185M",
+    expected: { cid: 1243, width: 1920, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
+    name: "dnxhd-1440x1080i2997-8bit-cid1244",
+    output: path.join(fixtureDir, "oracle_dnxhd_1440x1080i2997_8bit_cid1244.mxf"),
+    vf: "scale=1440:1080,setfield=tff,format=yuv422p",
+    bitrate: "120M",
+    expected: { cid: 1244, width: 1440, height: 1080, pixelFormat: "yuv422p8", frameCount: frames }
+  },
+  {
     name: "dnxhd-720p30-10bit-cid1250",
     output: path.join(fixtureDir, "oracle_dnxhd_720p30_10bit_cid1250.mxf"),
     vf: "fps=30,scale=1280:720,format=yuv422p10le",
