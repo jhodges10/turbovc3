@@ -77,8 +77,8 @@ Initial performance target:
 
 ## P0: Correctness and Input Hardening
 
-- [ ] Add malformed and truncated DNx fixtures for every parser boundary: header, row offsets, VLC data, quantization,
-  macroblock count, and frame size.
+- [x] Add a committed, manifest-driven malformed DNx corpus for header, row-offset/span, VLC, quantization-header,
+  macroblock-count, payload-tail, and frame-size boundaries.
 - [ ] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, partition chains,
   index arrays, random index packs, and out-of-range offsets.
 - [x] Add deterministic mutation targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing to PR
