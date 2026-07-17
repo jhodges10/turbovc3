@@ -36,6 +36,11 @@ import {
   DNXHD_1238_RUN,
   DNXHD_1241_CHROMA_WEIGHT,
   DNXHD_1241_LUMA_WEIGHT,
+  DNXHD_1250_AC_BITS,
+  DNXHD_1250_AC_CODES,
+  DNXHD_1250_AC_INFO,
+  DNXHD_1250_CHROMA_WEIGHT,
+  DNXHD_1250_LUMA_WEIGHT,
   DNXHD_1250_RUN,
   DNXHD_1250_RUN_BITS,
   DNXHD_1250_RUN_CODES,
@@ -43,7 +48,12 @@ import {
   DNXHD_1251_AC_CODES,
   DNXHD_1251_AC_INFO,
   DNXHD_1251_CHROMA_WEIGHT,
-  DNXHD_1251_LUMA_WEIGHT
+  DNXHD_1251_LUMA_WEIGHT,
+  DNXHD_1252_AC_BITS,
+  DNXHD_1252_AC_CODES,
+  DNXHD_1252_AC_INFO,
+  DNXHD_1252_CHROMA_WEIGHT,
+  DNXHD_1252_LUMA_WEIGHT
 } from "./dnxTables.js";
 
 export interface DnxScalarDecodeResult {
@@ -127,9 +137,36 @@ const TABLE_1237_8BIT: DnxScalarTableSet = {
   lumaWeight: DNXHD_1237_LUMA_WEIGHT,
   chromaWeight: DNXHD_1237_CHROMA_WEIGHT
 };
+const TABLE_1250_10BIT: DnxScalarTableSet = {
+  dcTable: DC_TABLE_1235,
+  acTable: buildHuffmanTable(DNXHD_1250_AC_CODES, DNXHD_1250_AC_BITS),
+  runTable: buildHuffmanTable(DNXHD_1250_RUN_CODES, DNXHD_1250_RUN_BITS),
+  acInfo: DNXHD_1250_AC_INFO,
+  run: DNXHD_1250_RUN,
+  eobIndex: 4,
+  indexBits: 6,
+  levelBias: 8,
+  levelShift: 4,
+  lumaWeight: DNXHD_1250_LUMA_WEIGHT,
+  chromaWeight: DNXHD_1250_CHROMA_WEIGHT
+};
+const TABLE_1252_8BIT: DnxScalarTableSet = {
+  dcTable: DC_TABLE_1237,
+  acTable: buildHuffmanTable(DNXHD_1252_AC_CODES, DNXHD_1252_AC_BITS),
+  runTable: buildHuffmanTable(DNXHD_1250_RUN_CODES, DNXHD_1250_RUN_BITS),
+  acInfo: DNXHD_1252_AC_INFO,
+  run: DNXHD_1250_RUN,
+  eobIndex: 5,
+  indexBits: 4,
+  levelBias: 32,
+  levelShift: 6,
+  lumaWeight: DNXHD_1252_LUMA_WEIGHT,
+  chromaWeight: DNXHD_1252_CHROMA_WEIGHT
+};
 const CID_TABLES = new Map<number, DnxScalarTableSet>([
   [1235, TABLE_1235_10BIT],
   [1237, TABLE_1237_8BIT],
+  [1250, TABLE_1250_10BIT],
   [
     1256,
     {
@@ -139,6 +176,8 @@ const CID_TABLES = new Map<number, DnxScalarTableSet>([
       chromaWeight: DNXHD_1235_LUMA_WEIGHT
     }
   ],
+  [1252, TABLE_1252_8BIT],
+  [1253, TABLE_1237_8BIT],
   [
     1270,
     {
@@ -148,6 +187,8 @@ const CID_TABLES = new Map<number, DnxScalarTableSet>([
       chromaWeight: DNXHD_1235_LUMA_WEIGHT
     }
   ],
+  [1258, TABLE_1252_8BIT],
+  [1259, TABLE_1237_8BIT],
   [
     1251,
     {
@@ -281,6 +322,10 @@ export function getDnxRowTableSet(cid: number, bitDepth?: 8 | 10 | 12, is444 = f
   return bitDepth === 12
     ? { ...tables, indexBits: 6, levelBias: is444 ? 32 : 8, levelShift: 4 }
     : tables;
+}
+
+export function supportsDnxScalarCid(cid: number): boolean {
+  return CID_TABLES.has(cid);
 }
 
 export function putDnxDecodedRow(

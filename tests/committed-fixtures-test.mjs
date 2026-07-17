@@ -10,8 +10,18 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const fixtureDir = path.join(repoRoot, "tests/fixtures");
 const manifest = JSON.parse(await readFile(path.join(fixtureDir, "manifest.json"), "utf8"));
 const requiredFiles = [
+  "oracle_dnxhd_720p30_10bit_cid1250.mxf",
+  "oracle_dnxhd_720p30_10bit_cid1250.yuv.gz",
   "oracle_dnxhd_720p30_8bit_cid1251.mxf",
   "oracle_dnxhd_720p30_8bit_cid1251.yuv.gz",
+  "oracle_dnxhd_720p30_8bit_cid1252.mxf",
+  "oracle_dnxhd_720p30_8bit_cid1252.yuv.gz",
+  "oracle_dnxhd_1080p30_8bit_cid1253.mxf",
+  "oracle_dnxhd_1080p30_8bit_cid1253.yuv.gz",
+  "oracle_dnxhd_960x720p30_8bit_cid1258.mxf",
+  "oracle_dnxhd_960x720p30_8bit_cid1258.yuv.gz",
+  "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf",
+  "oracle_dnxhd_1440x1080p30_8bit_cid1259.yuv.gz",
   "oracle_dnxhr_hqx_1080p30_10bit_cid1271.mov",
   "oracle_dnxhr_hqx_1080p30_10bit_cid1271.yuv.gz",
   "oracle_dnxhr_444_1080p30_10bit.mov",

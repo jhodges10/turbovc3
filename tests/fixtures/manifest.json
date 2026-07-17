@@ -4,6 +4,18 @@
   "description": "One-frame synthetic test-pattern fixtures and compressed FFmpeg oracle output.",
   "files": [
     {
+      "path": "oracle_dnxhd_720p30_10bit_cid1250.mxf",
+      "sha256": "2ac132bafbac43c6dac9617e2e8184b323c9d488bd8de906c00d592b6bde9fab",
+      "cid": 1250,
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuv422p10"
+    },
+    {
+      "path": "oracle_dnxhd_720p30_10bit_cid1250.yuv.gz",
+      "sha256": "d0caf57324109174e0d3af61cb4f397958f76588fd8df08ca2ca9b1be47675a4"
+    },
+    {
       "path": "oracle_dnxhd_720p30_8bit_cid1251.mxf",
       "sha256": "ed4a4d5e785257450d0bbfc48d5e614c4241409c4ba174e3b677365f5bc32b96",
       "cid": 1251,
@@ -14,6 +26,54 @@
     {
       "path": "oracle_dnxhd_720p30_8bit_cid1251.yuv.gz",
       "sha256": "c6155d817194985df45f97f9d87ed0d6b9262da924df5b49659c02bd51c1eee3"
+    },
+    {
+      "path": "oracle_dnxhd_720p30_8bit_cid1252.mxf",
+      "sha256": "c86ad16173d85293ba6e2cee6dc749b5d51af4b0c864511124d0bc3f180bc4eb",
+      "cid": 1252,
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuv422p8"
+    },
+    {
+      "path": "oracle_dnxhd_720p30_8bit_cid1252.yuv.gz",
+      "sha256": "3630172354e6bf5ca614f2defc7f6df01f41a2cdc8aa91db726d870e0db6420d"
+    },
+    {
+      "path": "oracle_dnxhd_1080p30_8bit_cid1253.mxf",
+      "sha256": "e8b8069c9689d0450cd6c95b1ed065043429b0f7d7a9581a187714cd776619fb",
+      "cid": 1253,
+      "width": 1920,
+      "height": 1080,
+      "pixelFormat": "yuv422p8"
+    },
+    {
+      "path": "oracle_dnxhd_1080p30_8bit_cid1253.yuv.gz",
+      "sha256": "ec5d02f39bda59a357dfe94a35ef295c582fea00002a16aa60b7d16454f65d77"
+    },
+    {
+      "path": "oracle_dnxhd_960x720p30_8bit_cid1258.mxf",
+      "sha256": "c26e75cf6ac9eccc5294bc5ea4d2092623c023991b6346feb54c7f82005a26ef",
+      "cid": 1258,
+      "width": 960,
+      "height": 720,
+      "pixelFormat": "yuv422p8"
+    },
+    {
+      "path": "oracle_dnxhd_960x720p30_8bit_cid1258.yuv.gz",
+      "sha256": "348967bee20bcdcfc2e39e8468c4baa670e5784c55d9aa29f160c833f7d0a65e"
+    },
+    {
+      "path": "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf",
+      "sha256": "fd4b06c741dce375743fc9ee823344d0d7240b634ebb834c4ae6e7d01bdc4b1a",
+      "cid": 1259,
+      "width": 1440,
+      "height": 1080,
+      "pixelFormat": "yuv422p8"
+    },
+    {
+      "path": "oracle_dnxhd_1440x1080p30_8bit_cid1259.yuv.gz",
+      "sha256": "c94e552a9277a21624e086956714a854c35ae122c82059e1d1f572728e207111"
     },
     {
       "path": "oracle_dnxhr_hqx_1080p30_10bit_cid1271.mov",

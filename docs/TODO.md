@@ -111,8 +111,8 @@ Initial performance target:
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
   8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
-- [ ] Expand the CID fixture matrix for currently declared DNxHD CIDs, especially 1250, 1252, 1253, 1256, 1258,
-  and 1259.
+- [x] Expand committed oracle coverage to progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
+- [ ] Add CID 1256 DNxHD 4:4:4 from an external source; FFmpeg 8 rejects that encoding combination.
 - [ ] Verify adaptive color transform behavior across scalar, Zig/WASM, Mediabunny, and WebGPU paths.
 - [ ] Audit unknown-CID handling against current VC-3 registrations without accepting frames solely from plausible
   dimensions or packet sizes.

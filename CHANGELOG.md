@@ -30,6 +30,7 @@ All notable changes to turbovc3 will be documented here.
 - SHA-pinned Deno and Bun CI smoke coverage for direct ESM, TypeScript/native fallback selection, injected packet
   workers, decode, and teardown.
 - Public renderer lifetime state, WebGPU device-loss notification/failure behavior, and idempotent teardown contracts.
+- Committed FFmpeg-oracle coverage for progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
 
 ### Changed
 
