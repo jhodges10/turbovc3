@@ -125,9 +125,10 @@ jobs already accepted by the underlying decoder.
 | MXF | OP1a and OPAtom DNx essence; PCM track metadata and packet extraction |
 | Deferred | Adaptive-macroblock MBAFF packets, alpha, and a dedicated 12-bit 4:4:4 fixture |
 
-CI performs real FFmpeg-oracle comparisons for progressive DNxHD 8/10-bit, interlaced CIDs 1241–1244, DNxHR HQX
-10-bit, and DNxHR 444 10-bit, plus OP1a and OPAtom demuxing. The extended local suite covers additional profiles and
-the external FFmpeg 12-bit FATE sample.
+CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,
+interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. The
+external 12-bit FATE sample remains an opt-in local oracle because FFmpeg 8 cannot produce a genuine 12-bit DNx
+packet. The committed synthetic corpus uses bit-exact muxer output and SHA-256 manifests.
 
 ## Runtime backends
 
