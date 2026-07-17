@@ -71,6 +71,8 @@ Acceptance criteria:
 - [ ] Add regression budgets for the Zig/WASM frame path, worker scheduling overhead, and YUV upload/render time.
 - [ ] Replace fixed native capacity limits with dimensions derived from validated frame headers where practical, and
   test maximum supported rows, packets, macroblocks, and frame allocations.
+- [x] Export and validate the complete versioned Zig capacity envelope before native memory access, including packet,
+  row, frame, macroblock-width, and row-count boundary contracts for the declared 4096×2160 scope.
 - [ ] Profile packet copies and plane uploads; pool reusable buffers and GPU resources where measurements justify it.
 
 Initial performance target:

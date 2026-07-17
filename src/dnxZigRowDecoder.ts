@@ -19,6 +19,7 @@ export interface DnxRowTableSet {
 
 export interface DnxRowDecoder {
   readonly mode: "zig-wasm-frame";
+  readonly capacities: DnxNativeCapacities;
   decodeFrame(
     packet: Uint8Array,
     rows: readonly DnxRowSpanInput[],
@@ -38,6 +39,14 @@ export interface DnxRowDecoder {
   destroy(): void;
 }
 
+export interface DnxNativeCapacities {
+  rowBytes: number;
+  packetBytes: number;
+  frameBytes: number;
+  macroblocksPerRow: number;
+  rows: number;
+}
+
 export interface DnxRowSpanInput {
   start: number;
   end: number;
@@ -47,6 +56,8 @@ interface DnxZigWasmExports {
   memory: WebAssembly.Memory;
   dnx_row_decoder_version: () => number;
   dnx_row_capacity: () => number;
+  dnx_macroblock_capacity: () => number;
+  dnx_rows_capacity: () => number;
   dnx_row_buffer_ptr: () => number;
   dnx_packet_capacity: () => number;
   dnx_packet_buffer_ptr: () => number;
@@ -127,7 +138,7 @@ export async function createDnxWasmRowDecoder(wasmBytes?: BufferSource): Promise
   const instance = await WebAssembly.instantiate(module, {});
   const exports = instance.exports as unknown as DnxZigWasmExports;
   validateExports(exports);
-  if (exports.dnx_row_decoder_version() !== 2) {
+  if (exports.dnx_row_decoder_version() !== 3) {
     throw new Error(`Unsupported DNx Zig row decoder version ${exports.dnx_row_decoder_version()}.`);
   }
 
@@ -136,10 +147,19 @@ export async function createDnxWasmRowDecoder(wasmBytes?: BufferSource): Promise
 
 class DnxZigWasmRowDecoder implements DnxRowDecoder {
   readonly mode = "zig-wasm-frame" as const;
+  readonly capacities: DnxNativeCapacities;
   private configuredTables: DnxRowTableSet | null = null;
   private destroyed = false;
 
-  constructor(private readonly exports: DnxZigWasmExports) {}
+  constructor(private readonly exports: DnxZigWasmExports) {
+    this.capacities = Object.freeze({
+      rowBytes: exports.dnx_row_capacity(),
+      packetBytes: exports.dnx_packet_capacity(),
+      frameBytes: exports.dnx_frame_capacity(),
+      macroblocksPerRow: exports.dnx_macroblock_capacity(),
+      rows: exports.dnx_rows_capacity()
+    });
+  }
 
   decodeFrame(
     packet: Uint8Array,
@@ -153,15 +173,31 @@ class DnxZigWasmRowDecoder implements DnxRowDecoder {
     if (this.destroyed) {
       throw new Error("DNx Zig row decoder is destroyed.");
     }
-    if (packet.byteLength > this.exports.dnx_packet_capacity()) {
+    if (packet.byteLength > this.capacities.packetBytes) {
       throw new Error(`DNx packet requires ${packet.byteLength} bytes, exceeding the Zig buffer capacity.`);
     }
     if (rows.length !== macroblockHeight) {
       throw new Error(`DNx frame requires ${macroblockHeight} row spans, got ${rows.length}.`);
     }
+    if (
+      !Number.isInteger(macroblockWidth) ||
+      macroblockWidth < 1 ||
+      macroblockWidth > this.capacities.macroblocksPerRow
+    ) {
+      throw new Error(
+        `DNx frame macroblock width ${macroblockWidth} exceeds the Zig capacity of ${this.capacities.macroblocksPerRow}.`
+      );
+    }
+    if (
+      !Number.isInteger(macroblockHeight) ||
+      macroblockHeight < 1 ||
+      macroblockHeight > this.capacities.rows
+    ) {
+      throw new Error(`DNx frame row count ${macroblockHeight} exceeds the Zig capacity of ${this.capacities.rows}.`);
+    }
 
     const frameByteLength = macroblockWidth * 16 * macroblockHeight * 16 * (is444 ? 3 : 2) * (bitDepth === 8 ? 1 : 2);
-    if (frameByteLength > this.exports.dnx_frame_capacity()) {
+    if (frameByteLength > this.capacities.frameBytes) {
       throw new Error(`DNx frame requires ${frameByteLength} bytes, exceeding the Zig buffer capacity.`);
     }
 
@@ -211,11 +247,17 @@ class DnxZigWasmRowDecoder implements DnxRowDecoder {
     if (this.destroyed) {
       throw new Error("DNx Zig row decoder is destroyed.");
     }
-    if (rowBytes.byteLength > this.exports.dnx_row_capacity()) {
+    if (rowBytes.byteLength > this.capacities.rowBytes) {
       throw new Error(`DNx row requires ${rowBytes.byteLength} bytes, exceeding the Zig buffer capacity.`);
     }
-    if (!Number.isInteger(macroblockWidth) || macroblockWidth <= 0) {
-      throw new Error("DNx macroblock width must be a positive integer.");
+    if (
+      !Number.isInteger(macroblockWidth) ||
+      macroblockWidth < 1 ||
+      macroblockWidth > this.capacities.macroblocksPerRow
+    ) {
+      throw new Error(
+        `DNx row macroblock width ${macroblockWidth} exceeds the Zig capacity of ${this.capacities.macroblocksPerRow}.`
+      );
     }
 
     this.configureTables(tables);
@@ -296,6 +338,8 @@ function validateExports(exports: Partial<DnxZigWasmExports>): asserts exports i
   const requiredFunctions = [
     "dnx_row_decoder_version",
     "dnx_row_capacity",
+    "dnx_macroblock_capacity",
+    "dnx_rows_capacity",
     "dnx_row_buffer_ptr",
     "dnx_packet_capacity",
     "dnx_packet_buffer_ptr",
