@@ -225,6 +225,8 @@ The supported root surface contains:
 
 Low-level bit reading, coefficient reconstruction, IDCT, worker coordination, and native backend modules are internal.
 The full general-purpose MXF surface is exported from `@jhodges10/turbovc3/mxf`.
+The intended 1.0 boundaries and `0.x` compatibility policy are recorded in
+[the API stability guide](docs/api-stability.md).
 
 Filled frames expose `toVideoFrame({ timestamp, duration, ... })` for the standard 8-bit planar WebCodecs formats.
 The bridge preserves visible/coded dimensions, pixel aspect ratio, color metadata, and plane layout. High-bit-depth

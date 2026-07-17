@@ -190,8 +190,8 @@ Initial performance target:
 
 ## P2: API Stability and Developer Experience
 
-- [ ] Define the intended `1.0` public API and keep worker protocols, reconstruction tables, and native implementation
-  details private.
+- [x] Define the intended `1.0` root, `/mxf`, and `/node` boundaries; enforce them with the package export map and API
+  reports while keeping worker protocols, reconstruction tables, and native implementation details private.
 - [x] Document ownership and lifetime rules for `Decoder`, `Frame`, packet buffers, workers, renderers, and audio
   contexts.
 - [x] Add API Extractor reports for the root and `/mxf` entry points to CI so accidental exports and breaking type
@@ -200,7 +200,8 @@ Initial performance target:
   COOP/COEP headers.
 - [x] Add a maintained browser example for local MXF open, decode, Canvas2D playback, PCM audio-clock operation,
   seeking, cache/I/O telemetry, and backend diagnostics without moving codec behavior into the example.
-- [ ] Decide whether to publish on npmjs in addition to GitHub Packages.
+- [x] Defer npmjs publication; retain the permanent scoped identity so a separate npmjs registry workflow can be
+  added later without changing consumer imports.
 - [x] Document browser/runtime support, Mediabunny compatibility, security limits, and fixture provenance for the
   release line.
 - [x] Route semantic prereleases to `next` and attach a generated packed-file/API-hash/tarball compatibility report

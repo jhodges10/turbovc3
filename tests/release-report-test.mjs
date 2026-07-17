@@ -18,6 +18,7 @@ assert.equal(report.package.registry, "https://npm.pkg.github.com");
 assert.equal(report.package.distTag, report.package.version.includes("-") ? "next" : "latest");
 assert.equal(report.package.files.some((file) => file.path === "dist/index.js"), true);
 assert.equal(report.package.files.some((file) => file.path === "docs/compatibility.md"), true);
+assert.equal(report.package.files.some((file) => file.path === "docs/api-stability.md"), true);
 assert.deepEqual(Object.keys(report.apiReports).sort(), [
   "turbovc3-mxf.api.md",
   "turbovc3-node.api.md",
