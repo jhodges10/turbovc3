@@ -99,9 +99,9 @@ Initial performance target:
 - [ ] Add big-endian/AES3 PCM and stored-vs-valid-bit-depth handling when redistributable fixtures are available.
 - [x] Introduce a reusable playback clock, exposed by `DnxAudioPlayback`, that lets video presentation follow the
   same Web Audio timebase across start, pause, and seek.
-- [ ] Add drift correction, underrun recovery, pause/resume, seek, and end-of-stream behavior.
-- [ ] Define whether audio or wall clock is authoritative and document frame drop/repeat behavior when synchronization
-  diverges.
+- [x] Add explicit pause/resume, seek, end-of-stream, and opt-in underrun recovery behavior.
+- [x] Make the Web Audio context authoritative and expose `videoDecision()` so callers drop late frames, hold early
+  frames, and present frames within a configurable tolerance.
 - [ ] Add OP1a fixtures with PCM at multiple frame rates, sample rates, channel counts, and non-zero start timecode.
 - [ ] Keep unsupported compressed MXF audio explicit; do not silently treat arbitrary sound essence as PCM.
 

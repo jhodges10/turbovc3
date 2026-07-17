@@ -58,6 +58,8 @@ assert.deepEqual(playback.track, {
   duration: 1 / 30
 });
 assert.equal(playback.currentTime, 0);
+assert.equal(playback.clockAuthority, "audio-context");
+assert.equal(playback.isEnded, false);
 await playback.start(0);
 await waitFor(() => started.length === 1);
 assert.equal(playback.isPlaying, true);
@@ -74,11 +76,19 @@ assert.equal(
 );
 context.currentTime = 10.06;
 assert.equal(Math.abs(playback.currentTime - 0.01) < 1e-9, true);
+assert.equal(await playback.recoverFromUnderrun(), false, "scheduled audio is not an underrun");
+started[0].source.onended();
+assert.equal(await playback.recoverFromUnderrun(), true);
+await waitFor(() => started.length === 2);
 playback.pause();
 assert.equal(playback.isPlaying, false);
 assert.equal(Math.abs(playback.currentTime - 0.01) < 1e-9, true);
 await playback.seek(0.02);
 assert.equal(playback.currentTime, 0.02);
+context.currentTime = 11;
+await playback.start(playback.track.duration);
+assert.equal(playback.isEnded, true);
+assert.equal(playback.isPlaying, false);
 await playback.close();
 assert.equal(context.closeCalls, 0, "caller-owned AudioContext remains open");
 await assert.rejects(playback.start(), /closed/);

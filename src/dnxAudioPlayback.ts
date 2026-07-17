@@ -38,6 +38,7 @@ interface DnxAudioSource {
 export class DnxAudioPlayback implements AsyncDisposable {
   readonly track: DnxAudioTrackInfo;
   readonly clock: DnxPlaybackClock;
+  readonly clockAuthority = "audio-context" as const;
   private readonly source: DnxAudioSource;
   private readonly context: AudioContext;
   private readonly destination: AudioNode;
@@ -162,6 +163,10 @@ export class DnxAudioPlayback implements AsyncDisposable {
     return this.clock.currentTime;
   }
 
+  get isEnded(): boolean {
+    return this.clock.isEnded;
+  }
+
   async unlock(): Promise<void> {
     this.assertOpen();
     if (this.context.state === "suspended") {
@@ -205,6 +210,16 @@ export class DnxAudioPlayback implements AsyncDisposable {
     } else {
       this.clock.seek(timestamp);
     }
+  }
+
+  async recoverFromUnderrun(): Promise<boolean> {
+    this.assertOpen();
+    const timestamp = this.clock.currentTime;
+    if (!this.clock.isRunning || this.clock.isEnded || this.sources.size > 0) {
+      return false;
+    }
+    await this.start(timestamp);
+    return true;
   }
 
   async close(): Promise<void> {

@@ -134,6 +134,8 @@ export class DnxAudioPlayback implements AsyncDisposable {
     // (undocumented)
     readonly clock: DnxPlaybackClock;
     // (undocumented)
+    readonly clockAuthority: "audio-context";
+    // (undocumented)
     close(): Promise<void>;
     // (undocumented)
     static create(bytes: Uint8Array, options?: DnxAudioPlaybackOptions): Promise<DnxAudioPlayback | null>;
@@ -144,9 +146,13 @@ export class DnxAudioPlayback implements AsyncDisposable {
     // (undocumented)
     get isClockRunning(): boolean;
     // (undocumented)
+    get isEnded(): boolean;
+    // (undocumented)
     get isPlaying(): boolean;
     // (undocumented)
     pause(): void;
+    // (undocumented)
+    recoverFromUnderrun(): Promise<boolean>;
     // (undocumented)
     seek(timestamp: number): Promise<void>;
     // (undocumented)
@@ -434,6 +440,8 @@ export class DnxPlaybackClock {
     // (undocumented)
     readonly duration: number;
     // (undocumented)
+    get isEnded(): boolean;
+    // (undocumented)
     get isRunning(): boolean;
     // (undocumented)
     pause(): number;
@@ -441,6 +449,8 @@ export class DnxPlaybackClock {
     seek(timestamp: number): number;
     // (undocumented)
     start(timestamp?: number, clockTime?: number): void;
+    // (undocumented)
+    videoDecision(timestamp: number, tolerance?: number): DnxPlaybackSyncDecision;
 }
 
 // @public (undocumented)
@@ -450,6 +460,9 @@ export interface DnxPlaybackClockOptions {
     // (undocumented)
     now?: () => number;
 }
+
+// @public (undocumented)
+export type DnxPlaybackSyncDecision = "drop" | "present" | "hold";
 
 // @public (undocumented)
 export type DnxProfile = "dnxhd" | "dnxhr_lb" | "dnxhr_sq" | "dnxhr_hq" | "dnxhr_hqx" | "dnxhr_444";
