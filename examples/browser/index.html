@@ -3,36 +3,131 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>turbovc3 MXF player example</title>
+    <meta name="theme-color" content="#090b0d">
+    <title>TurboVC · DNxHR format lab</title>
     <style>
-      :root { color-scheme: dark; font: 16px/1.45 system-ui, sans-serif; background: #111; color: #eee; }
-      body { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
-      header, .controls, .diagnostics { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
-      header { justify-content: space-between; }
-      canvas { display: block; width: 100%; margin: 1rem 0; background: #000; aspect-ratio: 16 / 9; }
-      input[type="range"] { flex: 1; min-width: 16rem; }
-      button, input { font: inherit; }
-      pre { background: #1d1d1d; padding: 1rem; overflow: auto; }
-      .status { color: #9ad; }
+      :root {
+        color-scheme: dark;
+        font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #090b0d;
+        color: #eef0ed;
+        --muted: #929994;
+        --line: #282d2b;
+        --panel: #111513;
+        --accent: #d8ff63;
+        --accent-soft: #283119;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: radial-gradient(circle at 80% -10%, #243021 0, transparent 30rem), #090b0d; }
+      main { width: min(1240px, calc(100% - 2rem)); margin: 0 auto; padding: 4rem 0 8rem; }
+      .eyebrow { color: var(--accent); font: 700 .72rem/1 ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; }
+      h1 { max-width: 850px; margin: 1rem 0; font-size: clamp(2.6rem, 7vw, 6.4rem); line-height: .92; letter-spacing: -.065em; }
+      .lede { max-width: 700px; margin: 0; color: #b9bfba; font-size: 1.1rem; }
+      .summary { display: flex; gap: .65rem; flex-wrap: wrap; margin: 2rem 0 3rem; }
+      .pill { padding: .45rem .7rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: #0d100f; }
+      .comparison-layout { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      .flavor-panel { position: sticky; top: 1rem; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #0d100fee; box-shadow: 0 18px 60px #0005; backdrop-filter: blur(18px); }
+      .flavor-panel > h2 { padding: 1.15rem 1.15rem 0; }
+      .filter-bar { display: grid; gap: .8rem; padding: 1rem 1.15rem; border-bottom: 1px solid var(--line); }
+      .filter-group { display: grid; grid-template-columns: 4.5rem 1fr 1fr; gap: .35rem; align-items: center; margin: 0; padding: 0; border: 0; }
+      .filter-group legend { padding: 0; color: var(--muted); font: 700 .7rem/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .filter-group button { min-width: 5.4rem; color: var(--muted); background: transparent; border-color: transparent; }
+      .filter-group button[aria-pressed="true"] { color: #10130d; border-color: var(--accent); background: var(--accent); }
+      body[data-color="hdr"] { --accent: #70d8ff; --accent-soft: #17323c; }
+      .flavor-list { display: grid; }
+      .flavor-row { display: grid; grid-template-columns: 1fr auto; gap: .25rem 1rem; width: 100%; padding: 1rem 1.15rem; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; text-align: left; background: transparent; }
+      .flavor-row:last-child { border-bottom: 0; }
+      .flavor-row:hover { background: #171b18; }
+      .flavor-row[aria-current="true"] { box-shadow: inset 3px 0 var(--accent); background: var(--accent-soft); }
+      .flavor-name { font-weight: 750; }
+      .flavor-detail { color: var(--muted); font-size: .75rem; }
+      .flavor-stats { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: #b9c0bb; font: .71rem/1.5 ui-monospace, monospace; text-align: right; white-space: pre-line; }
+      .selected-player { position: sticky; top: 1rem; min-width: 0; }
+      .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin: 0 0 1.25rem; }
+      h2 { margin: 0; font-size: 1.45rem; letter-spacing: -.025em; }
+      .section-heading p { max-width: 540px; margin: 0; color: var(--muted); text-align: right; }
+      .viewer { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--panel) 92%, transparent); box-shadow: 0 18px 60px #0005; }
+      .viewer-head { display: flex; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.15rem; border-bottom: 1px solid var(--line); }
+      .viewer h3 { margin: 0 0 .15rem; font-size: 1rem; }
+      .viewer-copy { color: var(--muted); font-size: .82rem; }
+      .badge { height: fit-content; padding: .25rem .48rem; border-radius: 5px; color: var(--accent); background: var(--accent-soft); font: 700 .68rem/1.2 ui-monospace, monospace; text-transform: uppercase; }
+      .stage { position: relative; aspect-ratio: 16 / 9; background: #030403; }
+      canvas { display: block; width: 100%; height: 100%; }
+      .placeholder { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; color: #6f7671; text-align: center; background: linear-gradient(135deg, #0a0d0b, #111512); }
+      .viewer[data-state="ready"] .placeholder { display: none; }
+      .controls { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: center; padding: .85rem 1.15rem .45rem; }
+      button, .file-label { border: 1px solid #343a36; border-radius: 7px; padding: .42rem .65rem; color: #e8ebe8; background: #191e1b; font: inherit; cursor: pointer; }
+      button:hover:not(:disabled), .file-label:hover { border-color: #5b665f; background: #202621; }
+      button:disabled { cursor: default; opacity: .42; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      output { min-width: 4.8rem; color: var(--muted); font: .75rem ui-monospace, monospace; text-align: right; }
+      .viewer-foot { display: flex; justify-content: space-between; gap: 1rem; min-height: 2.7rem; padding: .35rem 1.15rem .9rem; color: var(--muted); font-size: .78rem; }
+      .status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      details { flex: 0 0 auto; }
+      summary { cursor: pointer; }
+      pre { max-width: 34rem; margin: .5rem 0 0; overflow: auto; padding: .7rem; border: 1px solid var(--line); border-radius: 8px; background: #090b0a; color: #b9c2bb; }
+      .custom { margin-top: 4rem; }
+      .custom .viewer { max-width: 760px; }
+      .file-label input { display: none; }
+      footer { margin-top: 5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: #69706b; }
+      @media (max-width: 760px) {
+        main { padding-top: 2.5rem; }
+        .comparison-layout { grid-template-columns: 1fr; }
+        .flavor-panel, .selected-player { position: static; }
+        .section-heading { align-items: start; flex-direction: column; gap: .4rem; }
+        .section-heading p { text-align: left; }
+        .filter-group { grid-template-columns: 4rem 1fr 1fr; }
+        .filter-group button { min-width: 0; }
+        .controls { grid-template-columns: auto 1fr; }
+        output { grid-column: 1 / -1; text-align: left; }
+      }
     </style>
   </head>
-  <body>
-    <header>
-      <div>
-        <h1>turbovc3 MXF player</h1>
-        <p>Minimal decode, seek, PCM audio-clock, and backend diagnostics example.</p>
-      </div>
-      <input id="file" type="file" accept=".mxf,application/mxf">
-    </header>
-    <canvas id="video"></canvas>
-    <div class="controls">
-      <button id="play" type="button" disabled>Play</button>
-      <button id="pause" type="button" disabled>Pause</button>
-      <input id="seek" type="range" min="0" max="0" value="0" step="1" disabled>
-      <output id="position">0 / 0</output>
-    </div>
-    <p id="status" class="status">Choose an OP1a or OPAtom DNx MXF file.</p>
-    <pre id="diagnostics">No file open.</pre>
+  <body data-color="sdr">
+    <main>
+      <header>
+        <div class="eyebrow">TurboVC / format lab</div>
+        <h1>One image.<br>Five DNxHR flavors.</h1>
+        <p id="pipeline-description" class="lede">A five-second R3D camera original, developed in RWG/Log3G10 and transformed with RED’s Rec.709 / BT.1886 Medium Contrast / R_2 IPP2 LUT.</p>
+        <div class="summary" aria-label="Sample details">
+          <span id="resolution-pill" class="pill">1920 × 1080</span>
+          <span class="pill">23.976 fps</span>
+          <span class="pill">5 seconds</span>
+          <span id="color-pill" class="pill">SDR · Rec.709 / BT.1886</span>
+          <span class="pill">MXF OP1a</span>
+        </div>
+      </header>
+
+      <section class="comparison-layout" aria-label="DNxHR flavor comparison">
+        <aside class="flavor-panel">
+          <h2>Flavors</h2>
+          <nav class="filter-bar" aria-label="Sample filters">
+            <fieldset class="filter-group">
+              <legend>Color</legend>
+              <button type="button" data-filter data-color="sdr" aria-pressed="true">SDR</button>
+              <button type="button" data-filter data-color="hdr" aria-pressed="false">HDR</button>
+            </fieldset>
+            <fieldset class="filter-group">
+              <legend>Size</legend>
+              <button type="button" data-filter data-resolution="1080" aria-pressed="true">1080p</button>
+              <button type="button" data-filter data-resolution="2160" aria-pressed="false">4K</button>
+            </fieldset>
+          </nav>
+          <div id="flavor-list" class="flavor-list"></div>
+        </aside>
+        <div id="selected-viewer" class="selected-player"></div>
+      </section>
+
+      <section class="custom" aria-labelledby="custom-heading">
+        <div class="section-heading">
+          <h2 id="custom-heading">Open another MXF</h2>
+          <label class="file-label">Choose file<input id="file" type="file" accept=".mxf,application/mxf"></label>
+        </div>
+        <div id="custom-viewer"></div>
+      </section>
+
+      <footer>Decoded locally in your browser by TurboVC. Sample files are fetched with byte-range requests.</footer>
+    </main>
     <script type="module" src="/main.js"></script>
   </body>
 </html>
