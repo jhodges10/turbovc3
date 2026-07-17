@@ -143,6 +143,19 @@ const TABLE_1237_8BIT: DnxScalarTableSet = {
   lumaWeight: DNXHD_1237_LUMA_WEIGHT,
   chromaWeight: DNXHD_1237_CHROMA_WEIGHT
 };
+const TABLE_1238_8BIT: DnxScalarTableSet = {
+  dcTable: DC_TABLE_1237,
+  acTable: buildHuffmanTable(DNXHD_1238_AC_CODES, DNXHD_1238_AC_BITS_COMPLETE),
+  runTable: buildHuffmanTable(DNXHD_1235_RUN_CODES, DNXHD_1235_RUN_BITS),
+  acInfo: DNXHD_1238_AC_INFO,
+  run: DNXHD_1238_RUN,
+  eobIndex: 4,
+  indexBits: 4,
+  levelBias: 32,
+  levelShift: 6,
+  lumaWeight: DNXHD_1238_LUMA_WEIGHT,
+  chromaWeight: DNXHD_1238_CHROMA_WEIGHT
+};
 const TABLE_1250_10BIT: DnxScalarTableSet = {
   dcTable: DC_TABLE_1235,
   acTable: buildHuffmanTable(DNXHD_1250_AC_CODES, DNXHD_1250_AC_BITS),
@@ -172,6 +185,7 @@ const TABLE_1252_8BIT: DnxScalarTableSet = {
 const CID_TABLES = new Map<number, DnxScalarTableSet>([
   [1235, TABLE_1235_10BIT],
   [1237, TABLE_1237_8BIT],
+  [1238, TABLE_1238_8BIT],
   [
     1241,
     {
@@ -271,19 +285,7 @@ const CID_TABLES = new Map<number, DnxScalarTableSet>([
   ],
   [
     1272,
-    {
-      dcTable: DC_TABLE_1237,
-      acTable: buildHuffmanTable(DNXHD_1238_AC_CODES, DNXHD_1238_AC_BITS_COMPLETE),
-      runTable: buildHuffmanTable(DNXHD_1235_RUN_CODES, DNXHD_1235_RUN_BITS),
-      acInfo: DNXHD_1238_AC_INFO,
-      run: DNXHD_1238_RUN,
-      eobIndex: 4,
-      indexBits: 4,
-      levelBias: 32,
-      levelShift: 6,
-      lumaWeight: DNXHD_1238_LUMA_WEIGHT,
-      chromaWeight: DNXHD_1238_CHROMA_WEIGHT
-    }
+    TABLE_1238_8BIT
   ],
   [1273, TABLE_1237_8BIT],
   [1274, TABLE_1237_8BIT]

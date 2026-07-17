@@ -99,6 +99,12 @@ run_ffmpeg -v error -y \
 
 run_ffmpeg -v error -y \
   -f lavfi -i "testsrc2=size=1920x1080:rate=30:duration=1" \
+  -frames:v 1 -pix_fmt yuv422p -c:v dnxhd -profile:v dnxhd -b:v 220M -an \
+  -metadata creation_time=1970-01-01T00:00:00Z \
+  "$OUTPUT_DIR/oracle_dnxhd_1080p30_8bit_cid1238.mxf"
+
+run_ffmpeg -v error -y \
+  -f lavfi -i "testsrc2=size=1920x1080:rate=30:duration=1" \
   -frames:v 1 -pix_fmt yuv422p10le -c:v dnxhd -profile:v dnxhd -b:v 175M -an \
   -metadata creation_time=1970-01-01T00:00:00Z \
   "$OUTPUT_DIR/oracle_dnxhd_1080p30_10bit_cid1235.mxf"
@@ -174,6 +180,7 @@ for fixture in \
   "oracle_dnxhd_960x720p30_8bit_cid1258.mxf yuv422p" \
   "oracle_dnxhd_1440x1080p30_8bit_cid1259.mxf yuv422p" \
   "oracle_dnxhd_1080p30_8bit_cid1237.mxf yuv422p" \
+  "oracle_dnxhd_1080p30_8bit_cid1238.mxf yuv422p" \
   "oracle_dnxhd_1080p30_10bit_cid1235.mxf yuv422p10le" \
   "oracle_dnxhr_lb_1080p30_8bit_cid1274.mov yuv422p" \
   "oracle_dnxhr_sq_1080p30_8bit_cid1273.mov yuv422p" \
