@@ -32,6 +32,7 @@ All notable changes to turbovc3 will be documented here.
 - Public renderer lifetime state, WebGPU device-loss notification/failure behavior, and idempotent teardown contracts.
 - Committed FFmpeg-oracle coverage for progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
 - Decoder contract coverage proving unknown CIDs cannot be accepted from plausible dimensions or packet sizes.
+- Cross-partition MXF validation for linked partitions, footer pointers, KAG alignment, RIP entries, and SID ownership.
 
 ### Changed
 

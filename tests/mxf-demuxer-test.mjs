@@ -13,6 +13,7 @@ const module = await loadMxfModule();
 await testSyntheticKlv(module);
 await testSyntheticMalformedKlv(module);
 await testLazyDnxAdapter(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
+await testStructuralMutations(module, "tests/fixtures/dnxhr-lb-op1a-pcm.mxf");
 await testFixture(module, "samples/wip_gallery_page_1920x1080_60fps.mxf", {
   width: 1920,
   height: 1080,
@@ -103,6 +104,38 @@ async function testLazyDnxAdapter(module, relativePath) {
     module.MxfDemuxer.open(new Uint8Array(128), { limits: { maxResyncBytes: 32 } }),
     /resynchronization exceeded the 32-byte limit/
   );
+}
+
+async function testStructuralMutations(module, relativePath) {
+  const bytes = new Uint8Array(await readFile(path.join(repoRoot, relativePath)));
+  const parsed = await module.demuxMxf(bytes);
+
+  const randomIndexKlv = parsed.klvPackets.find(
+    (packet) => packet.keyHex === "060e2b34020501010d01020101110100"
+  );
+  assert.ok(randomIndexKlv);
+  const invalidRip = bytes.slice();
+  const ripView = new DataView(invalidRip.buffer, invalidRip.byteOffset, invalidRip.byteLength);
+  ripView.setUint32(randomIndexKlv.valueOffset, ripView.getUint32(randomIndexKlv.valueOffset) + 99);
+  await assert.rejects(module.demuxMxf(invalidRip), /random index BodySID .* does not match partition/);
+
+  const indexKlv = parsed.klvPackets.find(
+    (packet) => packet.keyHex === "060e2b34025301010d01020101100100"
+  );
+  assert.ok(indexKlv);
+  const invalidIndexSid = bytes.slice();
+  const indexSidTag = findBytes(
+    invalidIndexSid,
+    Uint8Array.from([0x3f, 0x06, 0x00, 0x04]),
+    indexKlv.valueOffset,
+    indexKlv.nextOffset
+  );
+  assert.notEqual(indexSidTag, -1);
+  new DataView(invalidIndexSid.buffer, invalidIndexSid.byteOffset, invalidIndexSid.byteLength).setUint32(
+    indexSidTag + 4,
+    99
+  );
+  await assert.rejects(module.demuxMxf(invalidIndexSid), /uses IndexSID 99, but its partition uses/);
 }
 
 async function testFixture(module, relativePath, expected) {
@@ -258,6 +291,28 @@ async function testSyntheticMalformedKlv(module) {
     /partition pack.*only 4 bytes/
   );
 
+  const inconsistentThisPartition = partitionPayload({ thisPartition: 1 });
+  await assert.rejects(
+    module.demuxMxf(klv(partitionKey, inconsistentThisPartition)),
+    /declares ThisPartition 1/
+  );
+
+  const header = klv(partitionKey, partitionPayload());
+  const footerOffset = header.byteLength;
+  const footerKey = "060e2b34020501010d01020101040400";
+  const footer = klv(footerKey, partitionPayload({
+    thisPartition: footerOffset,
+    previousPartition: 99,
+    footerPartition: footerOffset
+  }));
+  await assert.rejects(
+    module.demuxMxf(concatBytes(header, footer)),
+    /links PreviousPartition 99, expected 0/
+  );
+
+  const missingFooter = partitionPayload({ footerPartition: 99 });
+  await assert.rejects(module.demuxMxf(klv(partitionKey, missingFooter)), /is not a parsed footer/);
+
   const invalidPrimer = new Uint8Array(8);
   new DataView(invalidPrimer.buffer).setUint32(0, 1);
   new DataView(invalidPrimer.buffer).setUint32(4, 18);
@@ -304,6 +359,48 @@ function withRawLength(key, lengthBytes, payload) {
   result.set(lengthBytes, keyBytes.byteLength);
   result.set(payload, keyBytes.byteLength + lengthBytes.length);
   return result;
+}
+
+function partitionPayload({
+  thisPartition = 0,
+  previousPartition = 0,
+  footerPartition = 0,
+  kagSize = 1,
+  indexSid = 0,
+  bodySid = 0
+} = {}) {
+  const bytes = new Uint8Array(88);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(0, 1);
+  view.setUint16(2, 3);
+  view.setUint32(4, kagSize);
+  view.setBigUint64(8, BigInt(thisPartition));
+  view.setBigUint64(16, BigInt(previousPartition));
+  view.setBigUint64(24, BigInt(footerPartition));
+  view.setUint32(48, indexSid);
+  view.setUint32(60, bodySid);
+  view.setUint32(80, 0);
+  view.setUint32(84, 16);
+  return bytes;
+}
+
+function concatBytes(...parts) {
+  const result = new Uint8Array(parts.reduce((length, part) => length + part.byteLength, 0));
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.byteLength;
+  }
+  return result;
+}
+
+function findBytes(bytes, needle, start, end) {
+  for (let offset = start; offset + needle.byteLength <= end; offset += 1) {
+    if (needle.every((value, index) => bytes[offset + index] === value)) {
+      return offset;
+    }
+  }
+  return -1;
 }
 
 async function loadMxfModule() {
