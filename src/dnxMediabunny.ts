@@ -39,6 +39,12 @@ export interface DnxTrackInspection {
   codedHeight: number;
   displayWidth: number;
   displayHeight: number;
+  colorSpace: {
+    primaries: string | null;
+    transfer: string | null;
+    matrix: string | null;
+    fullRange: boolean | null;
+  };
   isDnx: boolean;
   packets: DnxPacketSummary[];
   firstPacket: DnxPacketSummary | null;
@@ -62,12 +68,13 @@ export async function inspectDnxContainer(bytes: Uint8Array): Promise<DnxContain
         const internalCodecId = normalizeInternalCodecId(await track.getInternalCodecId());
         const isDnx = isDnxInternalCodecId(internalCodecId);
         const packets = isDnx ? await readPackets(track) : [];
-        const [codec, codedWidth, codedHeight, displayWidth, displayHeight] = await Promise.all([
+        const [codec, codedWidth, codedHeight, displayWidth, displayHeight, colorSpace] = await Promise.all([
           track.getCodec(),
           track.getCodedWidth(),
           track.getCodedHeight(),
           track.getDisplayWidth(),
-          track.getDisplayHeight()
+          track.getDisplayHeight(),
+          track.getColorSpace()
         ]);
 
         return {
@@ -78,6 +85,12 @@ export async function inspectDnxContainer(bytes: Uint8Array): Promise<DnxContain
           codedHeight,
           displayWidth,
           displayHeight,
+          colorSpace: {
+            primaries: colorSpace.primaries ?? null,
+            transfer: colorSpace.transfer ?? null,
+            matrix: colorSpace.matrix ?? null,
+            fullRange: colorSpace.fullRange ?? null
+          },
           isDnx,
           packets,
           firstPacket: packets[0] ?? null

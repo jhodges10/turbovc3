@@ -351,6 +351,11 @@ async function main() {
     }
   }
 
+  const colorMetadataSource = presentSupported.find((fixture) => fixture.name === "dnxhr-lb-1080p30-8bit-cid1274");
+  if (colorMetadataSource) {
+    await assertContainerColorMetadata(decoder, colorMetadataSource.output);
+  }
+
   for (const extensionCase of [
     { name: "dnxhr-lb-1080p30-8bit-cid1274", fourCc: "AVdh", format: "I422" },
     { name: "dnxhr-hqx-1080p30-10bit-cid1271", fourCc: "AVdh", format: "I422P10" },
@@ -606,6 +611,29 @@ async function assertCodecSessionDecodesAllFrames(decoder, fixture) {
     const randomAccess = await decoder.decodeViaCodecSession(fixture.output, { startFrame: 1, maxFrames: 1 });
     assertEqual(randomAccess.frames.length, 1, `${fixture.name} random-access frame count`);
     assertEqual(randomAccess.frames[0]?.index, 1, `${fixture.name} random-access frame index`);
+  }
+}
+
+async function assertContainerColorMetadata(decoder, sourcePath) {
+  const tmp = await mkdtemp(path.join(tmpdir(), "dnx-color-metadata-"));
+  try {
+    const output = path.join(tmp, "tagged.mov");
+    const result = spawnSync(ffmpeg, [
+      "-v", "error", "-y", "-i", sourcePath, "-c", "copy",
+      "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc",
+      "-movflags", "write_colr", output
+    ], { cwd: repoRoot, stdio: "inherit" });
+    if (result.status !== 0) {
+      throw new Error("Failed to remux the DNx container-color metadata contract fixture.");
+    }
+    const decoded = await decoder.decodeViaCodecSession(output);
+    assertEqual(decoded.frames.length > 0, true, "container color metadata decoded frame");
+    assertEqual(decoded.frames[0].colorSpace.primaries, "bt2020", "container color primaries");
+    assertEqual(decoded.frames[0].colorSpace.transfer, "pq", "container color transfer");
+    assertEqual(decoded.frames[0].colorSpace.matrix, "bt2020-ncl", "container color matrix");
+    console.log("MOV container color metadata preservation passed");
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
   }
 }
 
@@ -931,6 +959,7 @@ async function loadBundledDecoder() {
               width: event.frame.width,
               height: event.frame.height,
               format: event.frame.format,
+              colorSpace: event.frame.colorSpace,
               pixelAspectRatio: event.frame.pixelAspectRatio,
               scanType: event.frame.scanType
             });
