@@ -158,6 +158,9 @@ await decoder.close();
 Other runtimes and CSP-specific hosts can provide `DecoderOptions.workerFactory`; the core package does not assume a
 Node global or mutate runtime globals.
 
+See the [deployment and lifetime guide](docs/deployment.md) for Vite, Webpack, Next.js, CSP, COOP/COEP, asset-layout,
+and object-ownership details.
+
 Mediabunny `1.50.8` does not yet classify DNx as a native `VideoCodec`. Registration therefore installs a guarded
 compatibility shim that disables itself when a future Mediabunny release provides that support.
 
