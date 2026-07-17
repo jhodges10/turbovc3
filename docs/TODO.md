@@ -79,8 +79,9 @@ Initial performance target:
 
 - [x] Add a committed, manifest-driven malformed DNx corpus for header, row-offset/span, VLC, quantization-header,
   macroblock-count, payload-tail, and frame-size boundaries.
-- [ ] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, partition chains,
-  index arrays, random index packs, and out-of-range offsets.
+- [x] Add malformed MXF coverage for BER lengths, KLV resynchronization, primer entries, local sets, short partition
+  packs, index arrays, random index packs, and out-of-range random-index offsets.
+- [ ] Validate full partition-link chains and BodySID/IndexSID relationships across multi-partition fixtures.
 - [x] Add deterministic mutation targets for DNx frame parsing/reconstruction and MXF KLV/local-set parsing to PR
   CI, with a larger local campaign available through `npm run test:fuzz`.
 - [x] Enforce configurable MXF limits for metadata size, KLV count, track count, packet count, descriptor dimensions,

@@ -207,6 +207,13 @@ async function demuxMxfSource(source: MxfSource, options: MxfDemuxOptions): Prom
   for (const track of tracks) {
     track.packetCount = packets.filter((packet) => packet.track.number === track.number).length;
   }
+  for (const entry of randomIndex) {
+    if (entry.byteOffset < 0 || entry.byteOffset >= source.size) {
+      throw new Error(
+        `MXF random index byte offset ${entry.byteOffset} is outside the ${source.size}-byte source.`
+      );
+    }
+  }
 
   return {
     source,
@@ -246,8 +253,14 @@ async function readKlvAt(source: MxfSource, offset: number): Promise<MxfKlvPacke
   const firstLengthByte = header[16];
   const longForm = (firstLengthByte & 0x80) !== 0;
   const lengthBytes = longForm ? firstLengthByte & 0x7f : 0;
-  if (longForm && (lengthBytes === 0 || lengthBytes > 8 || 17 + lengthBytes > header.length)) {
-    return null;
+  if (longForm && lengthBytes === 0) {
+    throw new Error(`MXF KLV at ${offset} uses the unsupported indefinite BER length form.`);
+  }
+  if (longForm && lengthBytes > 8) {
+    throw new Error(`MXF KLV at ${offset} uses an invalid ${lengthBytes}-byte BER length.`);
+  }
+  if (longForm && 17 + lengthBytes > header.length) {
+    throw new Error(`MXF KLV at ${offset} has a truncated BER length field.`);
   }
   const lengthFieldLength = longForm ? 1 + lengthBytes : 1;
   let valueLength = BigInt(longForm ? 0 : firstLengthByte);
@@ -375,6 +388,9 @@ async function parseMetadataSet(
       value: bytes.slice(offset, offset + length)
     });
     offset += length;
+  }
+  if (offset !== bytes.length) {
+    throw new Error(`MXF ${type} local set at ${klv.offset} has ${bytes.length - offset} trailing bytes.`);
   }
   const instanceUid = item(items, 0x3c0a);
   return {
@@ -556,19 +572,23 @@ function essenceSlices(
 function parseIndexTable(set: MxfMetadataSet): MxfIndexTableSegment {
   const entries: MxfIndexEntry[] = [];
   const entryArray = item(set.items, 0x3f0a);
-  if (entryArray && entryArray.length >= 8) {
+  if (entryArray) {
+    if (entryArray.length < 8) {
+      throw new Error(`MXF index entry array at ${set.offset} is shorter than its 8-byte header.`);
+    }
     const count = readU32BE(entryArray, 0);
     const itemLength = readU32BE(entryArray, 4);
-    if (itemLength >= 11 && 8 + count * itemLength <= entryArray.length) {
-      for (let index = 0; index < count; index += 1) {
-        const offset = 8 + index * itemLength;
-        entries.push({
-          temporalOffset: signedByte(entryArray[offset]),
-          keyFrameOffset: signedByte(entryArray[offset + 1]),
-          flags: entryArray[offset + 2],
-          streamOffset: safeNumber(readU64BE(entryArray, offset + 3))
-        });
-      }
+    if (itemLength < 11 || 8 + count * itemLength > entryArray.length) {
+      throw new Error(`Invalid MXF index entry array at ${set.offset}.`);
+    }
+    for (let index = 0; index < count; index += 1) {
+      const offset = 8 + index * itemLength;
+      entries.push({
+        temporalOffset: signedByte(entryArray[offset]),
+        keyFrameOffset: signedByte(entryArray[offset + 1]),
+        flags: entryArray[offset + 2],
+        streamOffset: safeNumber(readU64BE(entryArray, offset + 3))
+      });
     }
   }
   return {
@@ -589,6 +609,9 @@ async function parseRandomIndex(
   maxMetadataValueBytes: number
 ): Promise<MxfRandomIndexEntry[]> {
   const bytes = await readMetadataValue(source, klv, maxMetadataValueBytes);
+  if (bytes.length < 4 || (bytes.length - 4) % 12 !== 0) {
+    throw new Error(`Invalid MXF random index pack at ${klv.offset}.`);
+  }
   const entries: MxfRandomIndexEntry[] = [];
   for (let offset = 0; offset + 12 <= bytes.length - 4; offset += 12) {
     entries.push({
