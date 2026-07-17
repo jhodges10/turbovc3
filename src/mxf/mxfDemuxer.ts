@@ -551,6 +551,12 @@ async function parseMetadataSet(
 }
 
 function parseDescriptor(set: MxfMetadataSet): MxfDescriptor {
+  const channels = itemU32(set, 0x3d07);
+  const bitsPerSample = itemU32(set, 0x3d01);
+  const blockAlign = itemU16(set, 0x3d0a);
+  const storedBitsPerSample = blockAlign && channels && blockAlign % channels === 0
+    ? blockAlign / channels * 8
+    : bitsPerSample;
   return {
     instanceUid: set.instanceUid,
     linkedTrackId: itemU32(set, 0x3006),
@@ -563,8 +569,10 @@ function parseDescriptor(set: MxfMetadataSet): MxfDescriptor {
     horizontalSubsampling: itemU32(set, 0x3302),
     verticalSubsampling: itemU32(set, 0x3308),
     sampleRate: itemRational(set, 0x3d03),
-    channels: itemU32(set, 0x3d07),
-    bitsPerSample: itemU32(set, 0x3d01),
+    channels,
+    bitsPerSample,
+    storedBitsPerSample,
+    blockAlign,
     duration: itemI64(set, 0x3002)
   };
 }

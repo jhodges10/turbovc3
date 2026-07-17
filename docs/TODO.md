@@ -109,7 +109,8 @@ Initial performance target:
 - [x] Extend `DnxAudioPlayback` beyond MOV/MP4 so it can consume PCM packets and metadata from `MxfDemuxer`.
 - [x] Support BWF-style little-endian 16/24/32-bit integer PCM with descriptor sample rates, channel counts, packet
   edit rates, seek offsets, and explicit unsupported-track rejection.
-- [ ] Add big-endian/AES3 PCM and stored-vs-valid-bit-depth handling when redistributable fixtures are available.
+- [x] Distinguish MXF PCM valid sample depth from its stored 16/24/32-bit word size and mask left-aligned padding.
+- [ ] Add big-endian/AES3 PCM when redistributable fixtures and authoritative essence mappings are available.
 - [x] Introduce a reusable playback clock, exposed by `DnxAudioPlayback`, that lets video presentation follow the
   same Web Audio timebase across start, pause, and seek.
 - [x] Add explicit pause/resume, seek, end-of-stream, and opt-in underrun recovery behavior.

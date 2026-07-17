@@ -68,6 +68,8 @@ All notable changes to turbovc3 will be documented here.
   the lower-level `/mxf` demuxer remains available for inspection.
 - MXF audio creation now returns `null` only when audio is absent; present but unsupported tracks throw a detailed
   `DnxNotSupportedError` instead of silently appearing as a file with no audio.
+- MXF Wave/BWF PCM now distinguishes descriptor quantization depth from stored word size, including deterministic
+  20-in-24 and 24-in-32 signed sample conversion with low padding bits ignored.
 - Packet-worker decode promises now settle in submission order while retaining concurrent execution.
 - Shared-row decoding reuses its packet allocation and retains output allocations across reuse of the same `Frame`.
 - Synchronous scalar and Zig frame decoding now retain compatible output allocations when a `Frame` is reused.

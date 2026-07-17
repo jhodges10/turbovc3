@@ -71,6 +71,8 @@ export interface MxfDescriptor {
   sampleRate: MxfRational | null;
   channels: number | null;
   bitsPerSample: number | null;
+  storedBitsPerSample: number | null;
+  blockAlign: number | null;
   duration: number | null;
 }
 

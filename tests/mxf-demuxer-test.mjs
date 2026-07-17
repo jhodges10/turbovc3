@@ -327,6 +327,11 @@ async function testAudioVideoFixture(module, relativePath, expectedFrameCount = 
   assert.equal(audio.descriptor?.sampleRate?.denominator, 1);
   assert.equal(audio.descriptor?.channels, expected.channels ?? 2);
   assert.equal(audio.descriptor?.bitsPerSample, expected.bitsPerSample ?? 16);
+  assert.equal(audio.descriptor?.storedBitsPerSample, expected.bitsPerSample ?? 16);
+  assert.equal(
+    audio.descriptor?.blockAlign,
+    (expected.channels ?? 2) * (expected.bitsPerSample ?? 16) / 8
+  );
   if (expectedFrameCount > 1) {
     assert.equal(demuxer.packetsForTrack(audio)[1].timestampUs, 33333);
   }
