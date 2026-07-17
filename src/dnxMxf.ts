@@ -6,6 +6,7 @@ import {
   type MxfTrack
 } from "./mxf/index.js";
 import { parseDnxFrameHeader, type DnxFrameHeader } from "./dnxFrame.js";
+import { DnxInvalidDataError, DnxNotSupportedError } from "./dnxDecoder.js";
 
 export { MxfDemuxer } from "./mxf/index.js";
 export type {
@@ -37,6 +38,8 @@ const MXF_KEY_PREFIX = [0x06, 0x0e, 0x2b, 0x34] as const;
 const SAMPLE_RATE_TAG = [0x4b, 0x01, 0x00, 0x08] as const;
 const HEADER_SCAN_LIMIT = 2 * 1024 * 1024;
 const DNX_HEADER_BYTES = 0x280;
+
+type SupportedMxfOperationalPattern = "op1a" | "opatom";
 
 export function parseDnxMxfEditRate(bytes: Uint8Array): DnxMxfEditRate | null {
   if (!matches(bytes, 0, MXF_KEY_PREFIX)) {
@@ -79,6 +82,20 @@ export async function demuxDnxMxf(
   }
 
   const demuxer = await MxfDemuxer.open(input, options);
+  const operationalPattern = supportedOperationalPattern(demuxer.result.operationalPattern);
+  if (!operationalPattern) {
+    throw new DnxNotSupportedError(
+      `DNx MXF adapter supports OP1a and OPAtom; received ${demuxer.result.operationalPattern ?? "no operational-pattern label"}.`
+    );
+  }
+  if (operationalPattern === "opatom") {
+    const essenceTracks = demuxer.tracks.filter((track) => track.packetCount > 0);
+    if (essenceTracks.length !== 1) {
+      throw new DnxInvalidDataError(
+        `OPAtom MXF must contain exactly one essence track; found ${essenceTracks.length}.`
+      );
+    }
+  }
   for (const track of demuxer.tracks) {
     if (track.kind !== "video") {
       continue;
@@ -114,6 +131,19 @@ export async function demuxDnxMxf(
     };
   }
 
+  return null;
+}
+
+function supportedOperationalPattern(value: string | null): SupportedMxfOperationalPattern | null {
+  if (!value?.startsWith("060e2b340401010")) {
+    return null;
+  }
+  if (/^060e2b34040101010d01020101[0-9a-f]{4}00$/.test(value)) {
+    return "op1a";
+  }
+  if (/^060e2b34040101020d01020110[0-9a-f]{4}00$/.test(value)) {
+    return "opatom";
+  }
   return null;
 }
 

@@ -161,8 +161,8 @@ Initial performance target:
 - [x] Validate KAG alignment, partition-link consistency, and BodySID/IndexSID associations.
 - [ ] Validate operational-pattern-specific structural requirements beyond the current OP1a/OPAtom fixtures.
 - [ ] Add fixtures from FFmpeg, Avid, Adobe, Resolve, and other generators where licensing permits redistribution.
-- [ ] Decide which additional operational patterns are in scope. Do not imply general OP1b or growing-file support
-  until packet timelines are tested.
+- [x] Keep the root DNx adapter scoped to OP1a and OPAtom with explicit rejection for other labels; do not imply
+  general OP1b or growing-file support until packet timelines are tested.
 - [ ] Add an incremental/growing-file mode only after source-size changes, incomplete partitions, and index refreshes
   have explicit semantics.
 
