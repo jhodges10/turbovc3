@@ -25,6 +25,32 @@ test("cross-origin-isolated shared-row workers start and decode", async ({ page 
   expect(result.filled).toBe(true);
 });
 
+test("interlaced DNxHD weaves fields across backend configurations", async ({ page }) => {
+  await page.goto("/");
+  const results = [];
+  for (const options of [
+    { concurrency: 0, useSharedMemory: false },
+    { concurrency: 2, useSharedMemory: false },
+    { concurrency: 2, useSharedMemory: true }
+  ]) {
+    results.push(await decodeFixture(
+      page,
+      options,
+      "/tests/fixtures/oracle_dnxhd_1080i2997_10bit_cid1241.mxf",
+      "AVdn"
+    ));
+  }
+  for (const result of results) {
+    expect(result).toMatchObject({
+      filled: true,
+      width: 1920,
+      height: 1080,
+      pixelFormat: "yuv422p10",
+      scanType: "interlaced-top-field-first"
+    });
+  }
+});
+
 test("missing native assets fall back to TypeScript", async ({ page }) => {
   await page.route("**/wasm/generated/*.wasm", (route) => route.fulfill({ status: 404 }));
   await page.goto("/");
@@ -66,13 +92,13 @@ test("Canvas2D fallback renders deterministic pixels", async ({ page }) => {
   expect(pixels).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
 });
 
-async function decodeFixture(page, options) {
-  return page.evaluate(async ({ fixtureUrl: url, decoderOptions }) => {
+async function decodeFixture(page, options, url = fixtureUrl, fourCc = "AVdh") {
+  return page.evaluate(async ({ fixtureUrl: inputUrl, decoderOptions, dnxFourCc }) => {
     const [{ Decoder, Frame }, { demuxDnxMxf }] = await Promise.all([
       import("/dist/dnxDecoder.js"),
       import("/dist/dnxMxf.js")
     ]);
-    const response = await fetch(url);
+    const response = await fetch(inputUrl);
     if (!response.ok) {
       throw new Error(`Fixture request failed with HTTP ${response.status}.`);
     }
@@ -81,7 +107,7 @@ async function decodeFixture(page, options) {
       throw new Error("Committed MXF fixture did not contain DNx essence.");
     }
     const packet = await demuxed.demuxer.readPacket(demuxed.packets[0]);
-    const decoder = await Decoder.create({ dnxFourCc: "AVdh", ...decoderOptions });
+    const decoder = await Decoder.create({ dnxFourCc, ...decoderOptions });
     if (decoder instanceof Error) {
       throw decoder;
     }
@@ -97,11 +123,12 @@ async function decodeFixture(page, options) {
         width: frame.visibleWidth,
         height: frame.visibleHeight,
         pixelFormat: frame.pixelFormat,
+        scanType: frame.scanType,
         crossOriginIsolated: globalThis.crossOriginIsolated,
         canUseSharedMemory: Decoder.canUseSharedMemory()
       };
     } finally {
       await decoder.close();
     }
-  }, { fixtureUrl, decoderOptions: options });
+  }, { fixtureUrl: url, decoderOptions: options, dnxFourCc: fourCc });
 }

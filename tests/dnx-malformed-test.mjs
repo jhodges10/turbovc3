@@ -32,7 +32,48 @@ for (const recipe of recipes.cases) {
 }
 
 await decoder.close();
-console.log(`Malformed DNx boundary corpus passed (${recipes.cases.length} cases).`);
+
+const interlacedMxf = await module.demuxDnxMxf(
+  new Uint8Array(
+    await readFile(path.join(repoRoot, "tests/fixtures/oracle_dnxhd_1080i2997_10bit_cid1241.mxf"))
+  )
+);
+assert.ok(interlacedMxf, "interlaced DNx seed MXF demuxed");
+const interlacedSeed = await interlacedMxf.demuxer.readPacket(interlacedMxf.packets[0]);
+const interlacedDecoder = await module.Decoder.create({
+  dnxFourCc: "AVdn",
+  useSharedMemory: false,
+  concurrency: 0
+});
+assert.equal(interlacedDecoder instanceof Error, false);
+const codingUnitSize = 458752;
+
+const validInterlaced = await interlacedDecoder.decode(interlacedSeed, new module.Frame());
+assert.equal(validInterlaced instanceof Error, false);
+assert.equal(validInterlaced.scanType, "interlaced-top-field-first");
+assert.equal(validInterlaced.visibleHeight, 1080);
+
+const corruptSecondHeader = interlacedSeed.slice();
+corruptSecondHeader[codingUnitSize] ^= 0xff;
+const corruptSecondResult = await interlacedDecoder.decode(corruptSecondHeader, new module.Frame());
+assert.equal(corruptSecondResult.name, "DnxInvalidDataError");
+assert.match(corruptSecondResult.message, /coding unit 1.*invalid/i);
+
+const repeatedParity = interlacedSeed.slice();
+repeatedParity[codingUnitSize + 5] = repeatedParity[5];
+const repeatedParityResult = await interlacedDecoder.decode(repeatedParity, new module.Frame());
+assert.equal(repeatedParityResult.name, "DnxInvalidDataError");
+assert.match(repeatedParityResult.message, /same field parity/i);
+
+const bottomFirst = new Uint8Array(interlacedSeed.byteLength);
+bottomFirst.set(interlacedSeed.subarray(codingUnitSize), 0);
+bottomFirst.set(interlacedSeed.subarray(0, codingUnitSize), codingUnitSize);
+const bottomFirstResult = await interlacedDecoder.decode(bottomFirst, new module.Frame());
+assert.equal(bottomFirstResult instanceof Error, false);
+assert.equal(bottomFirstResult.scanType, "interlaced-bottom-field-first");
+
+await interlacedDecoder.close();
+console.log(`Malformed DNx boundary corpus passed (${recipes.cases.length + 2} cases plus field-order coverage).`);
 
 function mutate(seed, mutation) {
   if (mutation.type === "truncate") {

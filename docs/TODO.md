@@ -28,7 +28,10 @@ Remaining parity work is intentionally not marked complete without codec fixture
 - [ ] Replace per-worker WASM instances with a measured shared-runtime design, then prove the throughput improvement.
 - [x] Cover worker/backend startup in Chromium, Firefox, WebKit, Node, Deno, and Bun. Node ships through
   `@jhodges10/turbovc3/node`; Deno and Bun exercise direct ESM plus injected packet workers.
-- [ ] Implement interlaced/MBAFF and alpha/low-latency-alpha decode, rendering, and lifetime contracts.
+- [x] Implement two-field interlaced DNxHD decode and field-order metadata for CID 1241 across scalar, Zig/WASM,
+  packet-worker, shared-memory fallback, and rendering-compatible planar output.
+- [ ] Expand interlaced coverage to CIDs 1242-1244, implement MBAFF, and add alpha/low-latency-alpha decode,
+  rendering, and lifetime contracts.
 - [ ] Expand verified CID and 12-bit 4:4:4 coverage, malformed/fuzz coverage, and bit-exact oracle comparisons.
 - [ ] Add benchmark gates for concurrency scaling, buffer reuse, sustained playback, and teardown under load.
 
@@ -107,7 +110,8 @@ Initial performance target:
 
 ## P1: Codec Coverage
 
-- [ ] Implement interlaced DNxHD and MBAFF, beginning with CIDs 1241-1244 and 1260.
+- [x] Implement interlaced DNxHD CID 1241 with top/bottom field weaving and FFmpeg-oracle coverage.
+- [ ] Implement interlaced CIDs 1242-1244 and MBAFF CID 1260.
 - [ ] Add field-order, field-height, line-placement, timing, and deinterlacing integration tests.
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg

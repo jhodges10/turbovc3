@@ -1,5 +1,5 @@
 import { DnxBitReader } from "./dnxBitReader.js";
-import type { DnxFrameHeader } from "./dnxFrame.js";
+import { parseDnxFrameHeader, type DnxFrameHeader } from "./dnxFrame.js";
 import { DnxTypescriptIdctKernel, type DnxIdctKernel } from "./dnxIdctKernel.js";
 import type { DnxRowDecoder, DnxRowTableSet } from "./dnxZigRowDecoder.js";
 import {
@@ -166,6 +166,14 @@ const TABLE_1252_8BIT: DnxScalarTableSet = {
 const CID_TABLES = new Map<number, DnxScalarTableSet>([
   [1235, TABLE_1235_10BIT],
   [1237, TABLE_1237_8BIT],
+  [
+    1241,
+    {
+      ...TABLE_1235_10BIT,
+      lumaWeight: DNXHD_1241_LUMA_WEIGHT,
+      chromaWeight: DNXHD_1241_CHROMA_WEIGHT
+    }
+  ],
   [1250, TABLE_1250_10BIT],
   [
     1256,
@@ -241,9 +249,21 @@ export function decodeDnxScalarFrame(
   idctKernel: DnxIdctKernel = new DnxTypescriptIdctKernel(),
   rowDecoder: DnxRowDecoder | null = null
 ): DnxScalarDecodeResult {
+  if (header.interlaced) {
+    return decodeInterlacedDnxScalarFrame(packet, header, idctKernel, rowDecoder);
+  }
+  return decodeDnxCodingUnit(packet, header, idctKernel, rowDecoder);
+}
+
+function decodeDnxCodingUnit(
+  packet: Uint8Array,
+  header: DnxFrameHeader,
+  idctKernel: DnxIdctKernel,
+  rowDecoder: DnxRowDecoder | null
+): DnxScalarDecodeResult {
   const baseTables = CID_TABLES.get(header.cid);
-  if (!baseTables || header.interlaced || header.mbaff || (header.is444 && header.bitDepth === 8)) {
-    throw new Error("Scalar decode currently supports progressive 8/10/12-bit DNx 4:2:2 and 10/12-bit DNx 4:4:4.");
+  if (!baseTables || header.mbaff || (header.is444 && header.bitDepth === 8)) {
+    throw new Error("Scalar decode does not support this DNx profile or coding mode.");
   }
   const tables = header.bitDepth === 12
     ? { ...baseTables, indexBits: 6, levelBias: header.is444 ? 32 : 8, levelShift: 4 }
@@ -311,6 +331,57 @@ export function decodeDnxScalarFrame(
     layout,
     rowsDecoded: rows.length,
     macroblocksDecoded
+  };
+}
+
+function decodeInterlacedDnxScalarFrame(
+  packet: Uint8Array,
+  header: DnxFrameHeader,
+  idctKernel: DnxIdctKernel,
+  rowDecoder: DnxRowDecoder | null
+): DnxScalarDecodeResult {
+  const codingUnitSize = header.codingUnitSize;
+  if (!codingUnitSize || codingUnitSize * 2 > packet.byteLength) {
+    throw new Error("Interlaced DNx frame does not contain two complete coding units.");
+  }
+
+  const units = [packet.subarray(0, codingUnitSize), packet.subarray(codingUnitSize, codingUnitSize * 2)];
+  const fields = units.map((unit, index) => {
+    const parsed = parseDnxFrameHeader(unit, { declaredPacketLength: unit.byteLength });
+    if (!parsed || parsed.cid !== header.cid || !parsed.interlaced || parsed.fieldParity === null) {
+      throw new Error(`Interlaced DNx coding unit ${index} has an invalid or inconsistent header.`);
+    }
+    return {
+      parity: parsed.fieldParity === "top" ? 0 : 1,
+      decoded: decodeDnxCodingUnit(
+        unit,
+        { ...parsed, height: parsed.fieldHeight, interlaced: false, fieldParity: null },
+        idctKernel,
+        rowDecoder
+      )
+    };
+  });
+  if (fields[0].parity === fields[1].parity) {
+    throw new Error("Interlaced DNx coding units declare the same field parity.");
+  }
+
+  const layout = createDnxFrameLayout(header);
+  for (const field of fields) {
+    for (let planeIndex = 0; planeIndex < layout.planes.length; planeIndex += 1) {
+      const source = field.decoded.layout.planes[planeIndex];
+      const destination = layout.planes[planeIndex];
+      for (let row = 0; row < source.height; row += 1) {
+        const sourceStart = row * source.stride;
+        const destinationStart = (row * 2 + field.parity) * destination.stride;
+        destination.bytes.set(source.bytes.subarray(sourceStart, sourceStart + source.stride), destinationStart);
+      }
+    }
+  }
+
+  return {
+    layout,
+    rowsDecoded: fields.reduce((sum, field) => sum + field.decoded.rowsDecoded, 0),
+    macroblocksDecoded: fields.reduce((sum, field) => sum + field.decoded.macroblocksDecoded, 0)
   };
 }
 

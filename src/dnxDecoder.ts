@@ -427,7 +427,7 @@ export class Decoder implements AsyncDisposable {
         );
       }
 
-      if (this.sharedRowDecoder) {
+      if (this.sharedRowDecoder && !header.interlaced) {
         try {
           const decoded = await this.sharedRowDecoder.decode(
             packetData,
