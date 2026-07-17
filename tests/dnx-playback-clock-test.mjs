@@ -22,9 +22,18 @@ assert.equal(clock.seek(4), 4);
 clock.start();
 now = 22;
 assert.equal(clock.currentTime, 5, "clock clamps at media duration");
+assert.equal(clock.isRunning, false, "reaching end-of-stream stops the clock");
+assert.equal(clock.isEnded, true);
 assert.equal(clock.seek(-1), 0);
 assert.equal(clock.currentTime, 0);
+clock.start(2, 20);
+now = 20;
+assert.equal(clock.videoDecision(1.9, 0.05), "drop");
+assert.equal(clock.videoDecision(2.02, 0.05), "present");
+assert.equal(clock.videoDecision(2.1, 0.05), "hold");
 assert.throws(() => clock.seek(Number.NaN), RangeError);
+assert.throws(() => clock.videoDecision(Number.NaN), RangeError);
+assert.throws(() => clock.videoDecision(0, -1), RangeError);
 assert.throws(() => new module.DnxPlaybackClock({ duration: -1 }), RangeError);
 console.log("DNx reusable playback clock contract passed.");
 

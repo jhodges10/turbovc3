@@ -3,6 +3,8 @@ export interface DnxPlaybackClockOptions {
   now?: () => number;
 }
 
+export type DnxPlaybackSyncDecision = "drop" | "present" | "hold";
+
 export class DnxPlaybackClock {
   readonly duration: number;
   private readonly now: () => number;
@@ -20,16 +22,41 @@ export class DnxPlaybackClock {
   }
 
   get isRunning(): boolean {
+    this.sampleCurrentTime();
     return this.running;
   }
 
   get currentTime(): number {
+    return this.sampleCurrentTime();
+  }
+
+  get isEnded(): boolean {
+    return this.sampleCurrentTime() >= this.duration;
+  }
+
+  videoDecision(timestamp: number, tolerance = 1 / 60): DnxPlaybackSyncDecision {
+    if (!Number.isFinite(timestamp)) {
+      throw new RangeError("DNx video timestamps must be finite numbers.");
+    }
+    if (!Number.isFinite(tolerance) || tolerance < 0) {
+      throw new RangeError("DNx playback sync tolerance must be a finite non-negative number.");
+    }
+    const drift = timestamp - this.sampleCurrentTime();
+    return drift < -tolerance ? "drop" : drift > tolerance ? "hold" : "present";
+  }
+
+  private sampleCurrentTime(): number {
     if (!this.running) {
       return this.pausedTime;
     }
-    return this.clamp(
+    const timestamp = this.clamp(
       this.mediaAnchor + Math.max(0, this.now() - this.clockAnchor)
     );
+    if (timestamp >= this.duration) {
+      this.pausedTime = this.duration;
+      this.running = false;
+    }
+    return timestamp;
   }
 
   start(timestamp = this.pausedTime, clockTime = this.now()): void {
