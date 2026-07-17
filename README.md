@@ -69,6 +69,15 @@ const firstPacket = demuxer.packetsForTrack(videoTrack)[0];
 const encodedFrame = await demuxer.readPacket(firstPacket);
 ```
 
+MXF BWF-style little-endian PCM can drive the same playback clock used for MOV/MP4 audio:
+
+```ts
+import { DnxAudioPlayback } from "@jhodges10/turbovc3";
+
+const audio = await DnxAudioPlayback.createFromMxf(demuxer);
+await audio?.start();
+```
+
 `MxfDemuxer.open()` accepts an `AbortSignal`, progress callback, and configurable safety limits for metadata values,
 KLVs, tracks, packets, resynchronization work, and descriptor dimensions. Defaults are conservative for local media;
 remote or untrusted ingestion should lower them to the application’s actual envelope.
