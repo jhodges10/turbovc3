@@ -45,6 +45,8 @@ Native backend changes require Zig 0.16.0 and Emscripten 6.0.2:
 npm run build:wasm
 npm run test:native
 REQUIRE_WASM_ASSETS=1 npm run test:package
+npx playwright install chromium firefox webkit
+npm run test:browser
 ```
 
 Generated WASM is deliberately not committed. GitHub Actions builds it for native verification and release packages.

@@ -54,9 +54,9 @@ Acceptance criteria:
 
 ## P0: Browser and Performance Gates
 
-- [ ] Add browser integration tests for current Chromium, Firefox, and Safari releases.
-- [ ] Exercise cross-origin-isolated shared-row workers, ordinary packet workers, synchronous WASM, and TypeScript
-  fallback paths in CI or a scheduled browser matrix.
+- [x] Add Playwright integration tests for current Chromium, Firefox, and WebKit browser engines.
+- [x] Exercise cross-origin-isolated shared-row workers, ordinary packet workers, synchronous WASM, and TypeScript
+  fallback paths in CI.
 - [ ] Test real WebGPU output and the non-WebGPU rendering fallback with pixel comparisons, not only mocked GPU
   contracts.
 - [ ] Add sustained playback tests for 1080p60 and UHD60 fixtures, including play, pause, backward seek, rapid scrub,
