@@ -102,3 +102,24 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:runtimes
+
+  mediabunny:
+    name: Mediabunny ${{ matrix.mediabunny }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mediabunny: ["1.50.8", "latest"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Mediabunny compatibility target
+        run: npm install --no-save --package-lock=false mediabunny@${{ matrix.mediabunny }}
+      - run: npm run check
+      - run: node tests/mediabunny-compat-test.mjs
