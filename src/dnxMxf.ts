@@ -96,6 +96,11 @@ export async function demuxDnxMxf(
       );
     }
   }
+  if (demuxer.compositions.length === 0) {
+    throw new DnxInvalidDataError(
+      `${operationalPattern === "opatom" ? "OPAtom" : "OP1a"} DNx MXF has no material-package composition.`
+    );
+  }
   for (const track of demuxer.tracks) {
     if (track.kind !== "video") {
       continue;
@@ -115,6 +120,16 @@ export async function demuxDnxMxf(
     });
     if (!firstFrameHeader) {
       continue;
+    }
+    const referencedByComposition = demuxer.compositions.some((composition) =>
+      composition.tracks.some((compositionTrack) =>
+        compositionTrack.sourceClips.some((clip) => clip.sourceTrack === track)
+      )
+    );
+    if (!referencedByComposition) {
+      throw new DnxInvalidDataError(
+        `${operationalPattern === "opatom" ? "OPAtom" : "OP1a"} DNx track ${track.id} is not referenced by a resolvable material SourceClip.`
+      );
     }
 
     const { numerator, denominator } = track.editRate;

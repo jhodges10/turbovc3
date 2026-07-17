@@ -106,7 +106,8 @@ explicitly unsupported.
 
 For a one-call DNx adapter, use `demuxDnxMxf()` from the root module.
 The root adapter accepts OP1a and OPAtom operational-pattern labels and reports `DnxNotSupportedError` for other
-patterns. `@jhodges10/turbovc3/mxf` remains available for lower-level inspection without implying DNx playback
+patterns. It also requires a material composition whose SourceClip resolves to the selected DNx source track, and
+requires exactly one essence track for OPAtom. `@jhodges10/turbovc3/mxf` remains available for lower-level inspection without implying DNx playback
 support for every MXF operational pattern.
 
 For source-backed seeking without loading the complete MXF, use the random-access decoder. It keeps a bounded

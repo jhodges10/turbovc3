@@ -14,6 +14,8 @@ All notable changes to turbovc3 will be documented here.
 - A checksum-pinned fetch command for FFmpeg's public 12-bit CID 1271 HQX FATE sample and its strict extended oracle.
 - Material-package compositions with nested Sequence/SourceClip traversal and source-package/track resolution, while
   preserving alternate edits for caller selection.
+- OP1a/OPAtom DNx adapter validation for required material compositions, resolvable DNx SourceClip references, and
+  OPAtom's single-essence-track constraint.
 - Source-backed MXF and random-access decode for `Blob`, `File`, and custom sources, with abortable indexing and
   packet reads, progress/read telemetry, bounded compressed-packet caching, adjacent prefetch, and coalesced seeks.
 - Filled-frame inspection metadata and 12-bit 4:2:0 conversion/WebGPU support.
