@@ -201,8 +201,10 @@ Initial performance target:
 - [x] Add a maintained browser example for local MXF open, decode, Canvas2D playback, PCM audio-clock operation,
   seeking, cache/I/O telemetry, and backend diagnostics without moving codec behavior into the example.
 - [ ] Decide whether to publish on npmjs in addition to GitHub Packages.
-- [ ] Document browser support, Mediabunny compatibility, security limits, and fixture provenance per release.
-- [ ] Add release automation for prereleases and a generated package/API compatibility report.
+- [x] Document browser/runtime support, Mediabunny compatibility, security limits, and fixture provenance for the
+  release line.
+- [x] Route semantic prereleases to `next` and attach a generated packed-file/API-hash/tarball compatibility report
+  to every GitHub Packages release workflow run.
 
 ## Suggested Milestones
 

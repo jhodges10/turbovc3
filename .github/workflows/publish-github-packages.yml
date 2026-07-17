@@ -60,6 +60,7 @@ jobs:
       - run: npm run check
       - run: npm run build:wasm
       - run: npm run build
+      - run: npm run example:build
       - run: npm run api:report
       - run: npm test
       - run: npm run test:native
@@ -74,11 +75,17 @@ jobs:
         run: |
           mkdir -p artifacts
           npm pack --pack-destination artifacts
+      - name: Generate package and API compatibility report
+        run: |
+          TARBALL=$(find artifacts -maxdepth 1 -name '*.tgz' -print -quit)
+          npm run release:report -- --tarball "$TARBALL" --output artifacts/release-report.json
       - name: Upload verified package artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: npm-package-${{ github.event.release.tag_name }}
-          path: artifacts/*.tgz
+          path: |
+            artifacts/*.tgz
+            artifacts/release-report.json
           if-no-files-found: error
       - name: Select npm distribution tag
         id: dist-tag

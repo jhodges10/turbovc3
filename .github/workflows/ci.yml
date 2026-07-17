@@ -28,6 +28,7 @@ jobs:
       - run: npm test
       - run: npm run test:benchmark
       - run: npm run test:package
+      - run: npm run test:release-report
       - run: npm audit --audit-level=high
 
   native:

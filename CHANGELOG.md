@@ -8,6 +8,8 @@ All notable changes to turbovc3 will be documented here.
 
 - A maintained local browser example covering MXF file open, decode, Canvas2D playback, PCM audio clocking, seeking,
   and backend/cache/I/O diagnostics.
+- A release-generated JSON compatibility report containing the packed file inventory, public API hashes, dependency
+  contract, distribution tag, and tarball hash, plus versioned browser/runtime/security/fixture documentation.
 - Source-backed MXF and random-access decode for `Blob`, `File`, and custom sources, with abortable indexing and
   packet reads, progress/read telemetry, bounded compressed-packet caching, adjacent prefetch, and coalesced seeks.
 - Filled-frame inspection metadata and 12-bit 4:2:0 conversion/WebGPU support.
