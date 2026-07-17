@@ -47,6 +47,7 @@ npm run test:native
 REQUIRE_WASM_ASSETS=1 npm run test:package
 npx playwright install chromium firefox webkit
 npm run test:browser
+npm run test:runtimes # when Deno and Bun are installed
 ```
 
 Generated WASM is deliberately not committed. GitHub Actions builds it for native verification and release packages.
