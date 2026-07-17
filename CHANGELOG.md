@@ -21,6 +21,8 @@ All notable changes to turbovc3 will be documented here.
   out-of-range random-index offsets.
 - Chromium, Firefox, and WebKit integration coverage for synchronous Zig/WASM, packet workers, cross-origin-isolated
   shared-row workers, and missing-asset TypeScript fallback.
+- A portable `DnxCanvasRenderer` fallback with deterministic 8/10/12-bit YUV and GBR conversion tests, including
+  real Canvas2D pixel reads in all three browser engines.
 
 ### Changed
 

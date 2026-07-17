@@ -184,6 +184,18 @@ export interface DnxAudioTrackInfo {
 }
 
 // @public (undocumented)
+export class DnxCanvasRenderer {
+    // (undocumented)
+    static create(canvas: HTMLCanvasElement): DnxCanvasRenderer | null;
+    // (undocumented)
+    destroy(): void;
+    // (undocumented)
+    render(frame: DecodeFrame): void;
+    // (undocumented)
+    static supports(frame: DecodeFrame): boolean;
+}
+
+// @public (undocumented)
 export interface DnxCidEntry {
     // (undocumented)
     bitDepth: 8 | 10 | 12 | null;

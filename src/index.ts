@@ -1,4 +1,5 @@
 export * from "./dnxAudioPlayback.js";
+export * from "./dnxCanvasRenderer.js";
 export * from "./dnxDecoder.js";
 export * from "./dnxFrame.js";
 export * from "./dnxMxf.js";
