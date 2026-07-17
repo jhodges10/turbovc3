@@ -14,6 +14,8 @@ All notable changes to turbovc3 will be documented here.
   runtimes that do not expose the browser `Worker` global.
 - Validated `Frame.copyLayout()`, `allocationSize()`, and `copyTo()` helpers for packed or explicitly strided planar
   output copies.
+- A `deinterlaceDnxFrameLayout()` bob helper with real CID 1241 field parity, field-height, line-placement, and MXF
+  timing integration contracts.
 - Committed API Extractor reports and deterministic DNx/MXF mutation testing in CI.
 - A manifest-driven malformed DNx boundary corpus covering headers, rows, VLC, quantization headers, macroblock
   counts, payload tails, and frame sizes.

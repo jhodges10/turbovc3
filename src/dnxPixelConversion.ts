@@ -13,6 +13,67 @@ export type DnxConvertiblePixelFormat =
   | "yuv444p10"
   | "yuv444p12";
 
+export type DnxFieldParity = "top" | "bottom";
+
+/** Produces a full-height bob-deinterlaced layout from one parity of a woven frame. */
+export function deinterlaceDnxFrameLayout(
+  source: DnxFrameLayout,
+  parity: DnxFieldParity
+): DnxFrameLayout {
+  if (parity !== "top" && parity !== "bottom") {
+    throw new TypeError(`Unknown DNx field parity ${String(parity)}.`);
+  }
+  for (const plane of source.planes) {
+    const rowBytes = plane.width * source.bytesPerSample;
+    const requiredBytes = plane.height > 0 ? (plane.height - 1) * plane.stride + rowBytes : 0;
+    if (
+      !Number.isSafeInteger(plane.width) ||
+      !Number.isSafeInteger(plane.height) ||
+      plane.width <= 0 ||
+      plane.height <= 0 ||
+      !Number.isSafeInteger(plane.stride) ||
+      plane.stride < rowBytes ||
+      !Number.isSafeInteger(requiredBytes) ||
+      plane.bytes.byteLength < requiredBytes
+    ) {
+      throw new RangeError(`Invalid DNx ${plane.label} plane layout for deinterlacing.`);
+    }
+  }
+  const planeByteLengths = source.planes.map(
+    (plane) => plane.width * plane.height * source.bytesPerSample
+  );
+  const bytes = new Uint8Array(planeByteLengths.reduce((sum, length) => sum + length, 0));
+  let byteOffset = 0;
+  const planes = source.planes.map((sourcePlane, planeIndex) => {
+    const target = createPlane(
+      sourcePlane.label,
+      sourcePlane.width,
+      sourcePlane.height,
+      source.bytesPerSample,
+      bytes,
+      byteOffset
+    );
+    byteOffset += planeByteLengths[planeIndex];
+    const parityOffset = parity === "top" ? 0 : 1;
+    const fieldLineCount = Math.ceil((sourcePlane.height - parityOffset) / 2);
+    if (fieldLineCount <= 0) {
+      throw new RangeError(`DNx ${parity} field has no lines in a ${sourcePlane.height}-line plane.`);
+    }
+    for (let row = 0; row < target.height; row += 1) {
+      const fieldLine = Math.min(fieldLineCount - 1, Math.floor(row / 2));
+      const sourceRow = fieldLine * 2 + parityOffset;
+      const sourceOffset = sourceRow * sourcePlane.stride;
+      const targetOffset = row * target.stride;
+      target.bytes.set(
+        sourcePlane.bytes.subarray(sourceOffset, sourceOffset + target.stride),
+        targetOffset
+      );
+    }
+    return target;
+  });
+  return { ...source, planes };
+}
+
 export function selectDnxOutputFormat(
   source: DnxPixelFormat,
   allowed: readonly DnxPixelFormat[]

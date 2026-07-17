@@ -35,6 +35,24 @@ assert.equal(module.selectDnxOutputFormat("yuv422p12", ["yuv444p12"]), "yuv444p1
 assert.equal(module.selectDnxOutputFormat("yuv422p12", ["yuv420p12"]), "yuv420p12");
 assert.equal(module.selectDnxOutputFormat("gbrp12", ["yuv444p12"]), "yuv444p12");
 
+const woven = makeLayout(1);
+const topField = module.deinterlaceDnxFrameLayout(woven, "top");
+const bottomField = module.deinterlaceDnxFrameLayout(woven, "bottom");
+assert.deepEqual(readPlane(topField.planes[0], 1), [
+  0, 1, 2, 3, 0, 1, 2, 3, 8, 9, 10, 11, 8, 9, 10, 11
+]);
+assert.deepEqual(readPlane(bottomField.planes[0], 1), [
+  4, 5, 6, 7, 4, 5, 6, 7, 12, 13, 14, 15, 12, 13, 14, 15
+]);
+assert.notEqual(topField.planes[0].bytes.buffer, woven.planes[0].bytes.buffer);
+assert.throws(
+  () => module.deinterlaceDnxFrameLayout(
+    { ...woven, planes: [{ ...woven.planes[0], height: 1 }] },
+    "bottom"
+  ),
+  /bottom field has no lines/
+);
+
 for (const [rgb, expected] of [
   [[0, 0, 0], [64, 512, 512]],
   [[1023, 1023, 1023], [940, 512, 512]],

@@ -128,7 +128,7 @@ Initial performance target:
 - [x] Implement interlaced DNxHD CIDs 1241-1244 with top/bottom field weaving and FFmpeg-oracle coverage.
 - [x] Cover FFmpeg's experimental CID 1260 field-coded output with committed oracles.
 - [ ] Implement genuine CID 1260 MBAFF packets whose headers carry per-macroblock field-mode bits.
-- [ ] Add field-order, field-height, line-placement, timing, and deinterlacing integration tests.
+- [x] Add field-order, field-height, line-placement, timing, and bob-deinterlacing integration tests.
 - [ ] Implement alpha and low-latency alpha plane decode with explicit output formats and renderer support.
 - [ ] Add a committed or reproducibly fetched 12-bit DNxHR 4:4:4 fixture and strict FFmpeg-oracle coverage. FFmpeg
   8 accepts 12-bit input but its DNx encoder emits 10-bit HQX/444, so this requires a genuine external sample.
