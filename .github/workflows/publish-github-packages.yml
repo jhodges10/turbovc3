@@ -63,6 +63,7 @@ jobs:
       - run: npm run api:report
       - run: npm test
       - run: npm run test:native
+      - run: REQUIRE_NATIVE_BENCH=1 npm run test:benchmark
       - run: npm run test:runtimes
       - name: Install release browser engines
         run: npx playwright install --with-deps chromium firefox webkit

@@ -9,6 +9,16 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const recipePath = path.join(repoRoot, "tests/fixtures/malformed-dnx-cases.json");
 const recipes = JSON.parse(await readFile(recipePath, "utf8"));
 const module = await loadModule();
+assert.deepEqual(
+  module.createDnxFrameLayout({
+    width: 16,
+    height: 16,
+    is444: true,
+    bitDepth: 12,
+    pixelFormat: "gbrp12"
+  }).planes.map((plane) => plane.label),
+  ["G", "B", "R"]
+);
 const mxf = await module.demuxDnxMxf(
   new Uint8Array(await readFile(path.join(repoRoot, "tests/fixtures", recipes.seed)))
 );
@@ -116,6 +126,7 @@ async function loadModule() {
       contents: `
         export { Decoder, Frame } from ${JSON.stringify(path.join(repoRoot, "src/dnxDecoder.ts"))};
         export { demuxDnxMxf } from ${JSON.stringify(path.join(repoRoot, "src/dnxMxf.ts"))};
+        export { createDnxFrameLayout } from ${JSON.stringify(path.join(repoRoot, "src/dnxReconstruction.ts"))};
       `,
       resolveDir: repoRoot,
       sourcefile: "dnx-malformed-entry.ts"

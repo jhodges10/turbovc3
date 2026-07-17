@@ -532,9 +532,16 @@ export class Decoder implements AsyncDisposable {
       }
 
       try {
+        const backingBuffer = reusableScalarFrameBuffer(frame, header, sourcePixelFormat, outputPixelFormat);
         populateFrameHeader(frame, header);
         if (supportsDnxScalarCid(header.cid)) {
-          const decoded = decodeDnxScalarFrame(packetData, header, this.idctKernel ?? undefined, this.rowDecoder);
+          const decoded = decodeDnxScalarFrame(
+            packetData,
+            header,
+            this.idctKernel ?? undefined,
+            this.rowDecoder,
+            backingBuffer
+          );
           const layout = convertDnxFrameLayout(decoded.layout, sourcePixelFormat, outputPixelFormat, header.colorSpace);
           frame.pixelFormat = outputPixelFormat;
           frame.layout = layout;
@@ -576,6 +583,23 @@ export class Decoder implements AsyncDisposable {
   [Symbol.asyncDispose](): Promise<void> {
     return this.close();
   }
+}
+
+function reusableScalarFrameBuffer(
+  frame: Frame,
+  header: DnxFrameHeader,
+  sourcePixelFormat: DnxPixelFormat,
+  outputPixelFormat: DnxPixelFormat
+): ArrayBufferLike | undefined {
+  if (
+    sourcePixelFormat !== outputPixelFormat ||
+    frame.pixelFormat !== outputPixelFormat ||
+    frame.codedWidth !== Math.ceil(header.width / 16) * 16 ||
+    frame.codedHeight !== Math.ceil(header.height / 16) * 16
+  ) {
+    return undefined;
+  }
+  return frame.layout?.planes[0]?.bytes.buffer;
 }
 
 function browserWorkerFactory(): DnxWorkerFactory | null {

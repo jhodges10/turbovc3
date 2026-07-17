@@ -199,6 +199,10 @@ Node global or mutate runtime globals.
 See the [deployment and lifetime guide](docs/deployment.md) for Vite, Webpack, Next.js, CSP, COOP/COEP, asset-layout,
 and object-ownership details.
 
+`npm run bench:decode` produces a machine-readable report for synchronous/native decode, worker concurrency,
+allocation reuse, teardown under load, and cold/warm MXF seeking. See the [benchmark guide](docs/benchmarks.md) for
+methodology and comparison constraints.
+
 Mediabunny is a peer dependency with the supported range `^1.50.8`. Version `1.50.8` does not yet classify DNx as a
 native `VideoCodec`, so registration installs a guarded compatibility shim that disables itself when a future
 Mediabunny release provides that support. `registerDnxDecoder()` checks every shimmed API up front and reports a clear

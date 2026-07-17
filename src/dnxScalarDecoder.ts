@@ -295,19 +295,21 @@ export function decodeDnxScalarFrame(
   packet: Uint8Array,
   header: DnxFrameHeader,
   idctKernel: DnxIdctKernel = new DnxTypescriptIdctKernel(),
-  rowDecoder: DnxRowDecoder | null = null
+  rowDecoder: DnxRowDecoder | null = null,
+  backingBuffer?: ArrayBufferLike
 ): DnxScalarDecodeResult {
   if (header.interlaced) {
-    return decodeInterlacedDnxScalarFrame(packet, header, idctKernel, rowDecoder);
+    return decodeInterlacedDnxScalarFrame(packet, header, idctKernel, rowDecoder, backingBuffer);
   }
-  return decodeDnxCodingUnit(packet, header, idctKernel, rowDecoder);
+  return decodeDnxCodingUnit(packet, header, idctKernel, rowDecoder, backingBuffer);
 }
 
 function decodeDnxCodingUnit(
   packet: Uint8Array,
   header: DnxFrameHeader,
   idctKernel: DnxIdctKernel,
-  rowDecoder: DnxRowDecoder | null
+  rowDecoder: DnxRowDecoder | null,
+  backingBuffer?: ArrayBufferLike
 ): DnxScalarDecodeResult {
   const baseTables = CID_TABLES.get(header.cid);
   if (!baseTables || header.mbaff || (header.is444 && header.bitDepth === 8)) {
@@ -317,7 +319,7 @@ function decodeDnxCodingUnit(
     ? { ...baseTables, indexBits: 6, levelBias: header.is444 ? 32 : 8, levelShift: 4 }
     : baseTables;
 
-  const layout = createDnxFrameLayout(header);
+  const layout = createDnxFrameLayout(header, backingBuffer);
   const rows = parseDnxRowSpans(packet, header);
   const blocksPerMacroblock = header.is444 ? 12 : 8;
   const blocksPerRow = header.macroblockWidth * blocksPerMacroblock;
@@ -386,7 +388,8 @@ function decodeInterlacedDnxScalarFrame(
   packet: Uint8Array,
   header: DnxFrameHeader,
   idctKernel: DnxIdctKernel,
-  rowDecoder: DnxRowDecoder | null
+  rowDecoder: DnxRowDecoder | null,
+  backingBuffer?: ArrayBufferLike
 ): DnxScalarDecodeResult {
   const codingUnitSize = header.codingUnitSize;
   if (!codingUnitSize || codingUnitSize * 2 > packet.byteLength) {
@@ -413,7 +416,7 @@ function decodeInterlacedDnxScalarFrame(
     throw new Error("Interlaced DNx coding units declare the same field parity.");
   }
 
-  const layout = createDnxFrameLayout(header);
+  const layout = createDnxFrameLayout(header, backingBuffer);
   for (const field of fields) {
     for (let planeIndex = 0; planeIndex < layout.planes.length; planeIndex += 1) {
       const source = field.decoded.layout.planes[planeIndex];

@@ -52,6 +52,8 @@ All notable changes to turbovc3 will be documented here.
   variable-byte-count clip wrapping.
 - `Frame.toVideoFrame()` for standard 8-bit planar WebCodecs output with timing, display-aspect, color, and plane
   layout metadata, plus explicit rejection of non-portable high-bit-depth and GBR layouts.
+- A reproducible decode benchmark covering synchronous and native backends, worker concurrency, retained frame
+  allocations, close-under-load draining, and cold/warm source-backed MXF seeks.
 
 ### Changed
 
@@ -63,6 +65,8 @@ All notable changes to turbovc3 will be documented here.
   `DnxNotSupportedError` instead of silently appearing as a file with no audio.
 - Packet-worker decode promises now settle in submission order while retaining concurrent execution.
 - Shared-row decoding reuses its packet allocation and retains output allocations across reuse of the same `Frame`.
+- Synchronous scalar and Zig frame decoding now retain compatible output allocations when a `Frame` is reused.
+- 12-bit planar GBR reconstruction now labels its planes G/B/R consistently with the 10-bit path.
 - Decoder teardown rejects new work and drains accepted decode/source operations before terminating workers.
 - Truncated packets with valid DNx headers now report `DnxUnexpectedEofError` instead of a capability error.
 - Published worker modules use direct-ESM-compatible `.js` specifiers.
