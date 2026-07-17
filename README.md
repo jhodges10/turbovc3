@@ -171,8 +171,8 @@ external sample. The committed synthetic corpus uses bit-exact muxer output and 
 
 Relative to FFmpeg 8's reference CID table, turbovc3 does not silently omit a listed baseline CID. It explicitly
 rejects unknown CIDs and the still-deferred coding modes signaled inside otherwise known profiles: alpha and
-low-latency alpha. MBAFF entropy and placement use the scalar path with TypeScript or Emscripten IDCT; the Zig frame
-decoder is reserved for non-MBAFF packets and falls back safely.
+low-latency alpha. MBAFF entropy and adaptive block placement are implemented in both the scalar/Emscripten path and
+the Zig frame decoder; shared row workers route those packets through the complete Zig frame path.
 
 ## Runtime backends
 

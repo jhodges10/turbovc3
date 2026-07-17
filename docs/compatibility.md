@@ -43,5 +43,4 @@ Coverage claims distinguish implemented parsing from required oracle evidence. A
 unverified until suitable redistributable fixtures are available. The public FFmpeg FATE HQX 12-bit and CID 1260
 MBAFF samples are not redistributed, but `npm run fixtures:fetch-extended` retrieves them over HTTPS and rejects any
 content whose byte length or SHA-256 differs from its pinned identity. MBAFF is compared strictly against FFmpeg and
-also exercised through the Mediabunny adapter; it currently uses scalar entropy decode with TypeScript/Emscripten
-IDCT rather than the Zig frame fast path.
+also exercised through the Mediabunny adapter and the scalar, Emscripten-IDCT, and Zig frame paths.

@@ -14,6 +14,8 @@ All notable changes to turbovc3 will be documented here.
 - A checksum-pinned fetch command for FFmpeg's public 12-bit CID 1271 HQX FATE sample and its strict extended oracle.
 - Genuine CID 1260 MBAFF decode with per-macroblock frame/field placement, fixed-profile width normalization, sample
   aspect metadata, a checksum-pinned FFmpeg FATE oracle, and Mediabunny coverage.
+- Zig/WASM decoder ABI v4 with native MBAFF entropy and adaptive block placement, strictly compared with the scalar,
+  Emscripten-IDCT, and FFmpeg outputs.
 - Material-package compositions with nested Sequence/SourceClip traversal and source-package/track resolution, while
   preserving alternate edits for caller selection.
 - OP1a/OPAtom DNx adapter validation for required material compositions, resolvable DNx SourceClip references, and

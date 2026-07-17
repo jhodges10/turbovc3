@@ -27,6 +27,7 @@ export interface DnxRowDecoder {
     macroblockHeight: number,
     bitDepth: 8 | 10 | 12,
     is444: boolean,
+    mbaff: boolean,
     tables: DnxRowTableSet
   ): Uint8Array;
   decodeRow(
@@ -101,7 +102,8 @@ interface DnxZigWasmExports {
     indexBits: number,
     levelBias: number,
     levelShift: number,
-    is444: number
+    is444: number,
+    mbaff: number
   ) => number;
 }
 
@@ -138,7 +140,7 @@ export async function createDnxWasmRowDecoder(wasmBytes?: BufferSource): Promise
   const instance = await WebAssembly.instantiate(module, {});
   const exports = instance.exports as unknown as DnxZigWasmExports;
   validateExports(exports);
-  if (exports.dnx_row_decoder_version() !== 3) {
+  if (exports.dnx_row_decoder_version() !== 4) {
     throw new Error(`Unsupported DNx Zig row decoder version ${exports.dnx_row_decoder_version()}.`);
   }
 
@@ -168,6 +170,7 @@ class DnxZigWasmRowDecoder implements DnxRowDecoder {
     macroblockHeight: number,
     bitDepth: 8 | 10 | 12,
     is444: boolean,
+    mbaff: boolean,
     tables: DnxRowTableSet
   ): Uint8Array {
     if (this.destroyed) {
@@ -223,7 +226,8 @@ class DnxZigWasmRowDecoder implements DnxRowDecoder {
         tables.indexBits,
         tables.levelBias,
         tables.levelShift,
-        is444 ? 1 : 0
+        is444 ? 1 : 0,
+        mbaff ? 1 : 0
       );
     } catch (error) {
       throw new Error(`Zig frame decode trapped at ${this.diagnosticSummary()}.`, { cause: error });
