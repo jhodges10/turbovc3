@@ -35,6 +35,8 @@ All notable changes to turbovc3 will be documented here.
 - Committed FFmpeg-oracle coverage for progressive DNxHD CIDs 1250, 1252, 1253, 1258, and 1259.
 - Decoder contract coverage proving unknown CIDs cannot be accepted from plausible dimensions or packet sizes.
 - Cross-partition MXF validation for linked partitions, footer pointers, KAG alignment, RIP entries, and SID ownership.
+- MXF essence tracks are keyed by BodySID plus track number and linked through EssenceContainerData to their source
+  package and descriptor, preventing same-number tracks in different source packages from being merged.
 - Audio-authoritative video sync decisions, end-of-stream clock state, and opt-in audio underrun recovery.
 - Deployment and lifetime guidance for bundlers, CSP, cross-origin isolation, assets, and owned resources.
 - Release-tag publication now gates on API reports plus Chromium, Firefox, WebKit, Deno, and Bun runtime tests.
