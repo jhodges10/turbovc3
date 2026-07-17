@@ -550,8 +550,11 @@ export class DnxDecodeSession implements DecodeSession {
             height: result.visibleHeight,
             format: result.pixelFormat,
             colorSpace: dnxColorSpaceForHeader(result.header),
-            pixelAspectRatio,
-            scanType: "progressive",
+            pixelAspectRatio: pixelAspectRatio ?? {
+              numerator: result.pixelAspectRatio.num,
+              denominator: result.pixelAspectRatio.den
+            },
+            scanType: result.scanType === "progressive" ? "progressive" : "interlaced",
             planes: result.layout.planes,
             metadata: {
               header: result.header,
