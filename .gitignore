@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.zig-cache/
+zig-out/
 temp/
 test-results/
 playwright-report/
