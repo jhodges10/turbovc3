@@ -35,13 +35,18 @@ Register the extension once before creating a video sink:
 
 ```ts
 import { registerDnxDecoder } from "@jhodges10/turbovc3";
-import { BlobSource, Input, QuickTimeInputFormat, VideoSampleSink } from "mediabunny";
+import {
+    BlobSource,
+    Input,
+    QuickTimeInputFormat,
+    VideoSampleSink,
+} from "mediabunny";
 
 registerDnxDecoder();
 
 const input = new Input({
-  formats: [new QuickTimeInputFormat()],
-  source: new BlobSource(file)
+    formats: [new QuickTimeInputFormat()],
+    source: new BlobSource(file),
 });
 const track = await input.getPrimaryVideoTrack();
 if (!track) throw new Error("No video track found.");
@@ -68,9 +73,13 @@ if (!videoTrack) throw new Error("No MXF video track found.");
 const firstPacket = demuxer.packetsForTrack(videoTrack)[0];
 const encodedFrame = await demuxer.readPacket(firstPacket);
 
-const materialTimecode = demuxer.timecodeTracks.find((track) => track.packageKind === "material");
+const materialTimecode = demuxer.timecodeTracks.find(
+    (track) => track.packageKind === "material",
+);
 if (materialTimecode) {
-  console.log(demuxer.timecodeAt(materialTimecode, firstPacket.index).formatted);
+    console.log(
+        demuxer.timecodeAt(materialTimecode, firstPacket.index).formatted,
+    );
 }
 ```
 
@@ -118,12 +127,12 @@ superseded queued targets are aborted before decode:
 import { DnxRandomAccessDecoder } from "@jhodges10/turbovc3";
 
 const decoder = await DnxRandomAccessDecoder.create(file, {
-  packetCacheSize: 6,
-  prefetchFrames: 2,
-  signal: openAbortController.signal,
-  onIndexProgress: ({ offset, totalBytes, bytesRead }) => {
-    console.log({ offset, totalBytes, bytesRead });
-  }
+    packetCacheSize: 6,
+    prefetchFrames: 2,
+    signal: openAbortController.signal,
+    onIndexProgress: ({ offset, totalBytes, bytesRead }) => {
+        console.log({ offset, totalBytes, bytesRead });
+    },
 });
 if (decoder instanceof Error) throw decoder;
 
@@ -140,26 +149,26 @@ jobs already accepted by the underlying decoder.
 
 ## Supported scope
 
-| Area | Current support |
-| --- | --- |
-| Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR) |
-| Frames | Progressive through 4096×2160; interlaced DNxHD CIDs 1241–1244; field-coded and MBAFF CID 1260 |
-| Native output | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB |
-| Conversion | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV |
-| MOV/QuickTime | Through Mediabunny |
-| MXF | OP1a and OPAtom DNx essence; BodySID/source-package track identity; material compositions/SourceClips; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
-| Deferred | Alpha, low-latency alpha, and a dedicated 12-bit 4:4:4 fixture |
+| Area           | Current support                                                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sample entries | `AVdn` (DNxHD), `AVdh` (DNxHR)                                                                                                                                          |
+| Frames         | Progressive through 4096×2160; interlaced DNxHD CIDs 1241–1244; field-coded and MBAFF CID 1260                                                                          |
+| Native output  | 8/10/12-bit 4:2:2; 10/12-bit 4:4:4 YUV/RGB                                                                                                                              |
+| Conversion     | 8/10/12-bit 4:2:2 to 4:2:0/4:4:4; planar DNx RGB to 4:4:4 YUV                                                                                                           |
+| MOV/QuickTime  | Through Mediabunny                                                                                                                                                      |
+| MXF            | OP1a and OPAtom DNx essence; BodySID/source-package track identity; material compositions/SourceClips; multi-segment indexes; frame/clip wrapping; PCM; timecode tracks |
+| Deferred       | Alpha, low-latency alpha, and a dedicated 12-bit 4:4:4 fixture                                                                                                          |
 
 Rec. 2020 constant-luminance signaling is preserved in frame metadata but is not rendered or converted to YUV yet:
 the DNx header does not carry the transfer-function detail needed to apply that transform faithfully. Renderer
 capability checks return `false` for those frames instead of approximating them as Rec. 2020 non-constant-luminance.
 
-| Profile family | CID coverage |
-| --- | --- |
-| Progressive DNxHD | CIDs 1235, 1237, 1238, 1250–1253, 1258, and 1259 are required FFmpeg oracles |
-| Interlaced DNxHD | CIDs 1241–1244 and FFmpeg's non-MBAFF CID 1260 subset are required oracles; MBAFF CID 1260 uses a checksum-pinned FATE oracle |
-| DNxHR | CIDs 1270–1274 are required at FFmpeg-emittable 8/10-bit formats |
-| Implemented, external oracle required | CID 1256 4:4:4 and genuine 12-bit CID 1270/1271 packets |
+| Profile family                        | CID coverage                                                                                                                  |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Progressive DNxHD                     | CIDs 1235, 1237, 1238, 1250–1253, 1258, and 1259 are required FFmpeg oracles                                                  |
+| Interlaced DNxHD                      | CIDs 1241–1244 and FFmpeg's non-MBAFF CID 1260 subset are required oracles; MBAFF CID 1260 uses a checksum-pinned FATE oracle |
+| DNxHR                                 | CIDs 1270–1274 are required at FFmpeg-emittable 8/10-bit formats                                                              |
+| Implemented, external oracle required | CID 1256 4:4:4 and genuine 12-bit CID 1270/1271 packets                                                                       |
 
 CI performs real FFmpeg-oracle comparisons for every progressive DNxHD and DNxHR profile that FFmpeg 8 can encode,
 interlaced CIDs 1241–1244, field-coded CID 1260, paired DNxHR 444 YUV/GBR inputs, and OP1a/OPAtom demuxing. External
@@ -192,9 +201,9 @@ Node.js can opt into the packet-worker pool through the dedicated entry point; i
 import { createNodeDecoder, Frame } from "@jhodges10/turbovc3/node";
 
 const decoder = await createNodeDecoder({
-  dnxFourCc: "AVdh",
-  useSharedMemory: false,
-  concurrency: 4
+    dnxFourCc: "AVdh",
+    useSharedMemory: false,
+    concurrency: 4,
 });
 if (decoder instanceof Error) throw decoder;
 const result = await decoder.decode(packet, new Frame());
@@ -255,6 +264,37 @@ Both renderers expose `isDestroyed`; the WebGPU renderer also exposes `isDeviceL
 The maintained [browser example](examples/browser/README.md) opens local MXF files, decodes and seeks through the
 source-backed API, presents through Canvas2D, follows MXF PCM audio when present, and displays backend/cache/I/O
 diagnostics. Run it with `npm run example:browser`.
+
+## Native Zig package
+
+Alongside the TypeScript/WASM surface, turbovc3 ships a first-class native Zig package (Zig `0.16.0`) rooted at
+[src/native/root.zig](src/native/root.zig). It shares the same Zig row-decoder sources as the WASM build, so the two
+surfaces cannot drift. The module exposes:
+
+- `mxf` — OP1a frame-wrapped MXF demux over a pluggable pread-style `Reader` (tracks, edit rate, index tables,
+  per-frame essence extents, PCM descriptors), plus `mxf.pcm` for unpacking 16/24/32-bit PCM windows to `f32`.
+- `dnx` — DNx frame-header/CID parse (`parseFrameHeader`), VLC table selection, and full-frame decode to planar
+  YUV8 (`decodeFrameYuv8`) or interleaved RGB8 (`decodeFrameRgb8`, BT.709). 10/12-bit sources are tone-mapped to
+  8 bits. Interlaced coding units are not yet supported natively.
+- `Reader` / `FileReader` / `SliceReader` — the I/O seam; no file paths or libc assumptions leak into the API.
+
+Consume it with a `zig fetch` URL or a path dependency:
+
+```zig
+// build.zig.zon
+.dependencies = .{
+    .turbovc3 = .{ .path = "../turbovc3" }, // or .url + .hash via `zig fetch --save <tarball url>`
+},
+
+// build.zig
+const turbovc3 = b.dependency("turbovc3", .{ .target = target, .optimize = optimize });
+exe.root_module.addImport("turbovc3", turbovc3.module("turbovc3"));
+```
+
+Validate a clone standalone with `zig build test`, and try the example CLI with
+`zig build example -- samples/dnxhr/beach_rec2020_dnxhr_hq_1080p2398_5s.mxf` (prints track/packet info and a frame-0
+decode checksum). The row decoder retains its static-buffer design; native callers serialize frame decodes through an
+internal mutex, so concurrent clips decode correctly but not in parallel within one process.
 
 ## Develop
 

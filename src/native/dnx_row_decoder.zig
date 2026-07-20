@@ -105,107 +105,107 @@ const BitReader = struct {
     }
 };
 
-export fn dnx_row_decoder_version() u32 {
+pub export fn dnx_row_decoder_version() u32 {
     return 4;
 }
 
-export fn dnx_row_capacity() u32 {
+pub export fn dnx_row_capacity() u32 {
     return MAX_ROW_BYTES;
 }
 
-export fn dnx_macroblock_capacity() u32 {
+pub export fn dnx_macroblock_capacity() u32 {
     return MAX_MACROBLOCKS;
 }
 
-export fn dnx_rows_capacity() u32 {
+pub export fn dnx_rows_capacity() u32 {
     return MAX_ROWS;
 }
 
-export fn dnx_row_buffer_ptr() usize {
+pub export fn dnx_row_buffer_ptr() usize {
     return @intFromPtr(&row_bytes);
 }
 
-export fn dnx_packet_capacity() u32 {
+pub export fn dnx_packet_capacity() u32 {
     return MAX_PACKET_BYTES;
 }
 
-export fn dnx_packet_buffer_ptr() usize {
+pub export fn dnx_packet_buffer_ptr() usize {
     return @intFromPtr(&packet_bytes);
 }
 
-export fn dnx_row_starts_ptr() usize {
+pub export fn dnx_row_starts_ptr() usize {
     return @intFromPtr(&row_starts);
 }
 
-export fn dnx_row_ends_ptr() usize {
+pub export fn dnx_row_ends_ptr() usize {
     return @intFromPtr(&row_ends);
 }
 
-export fn dnx_frame_capacity() u32 {
+pub export fn dnx_frame_capacity() u32 {
     return MAX_FRAME_BYTES;
 }
 
-export fn dnx_frame_buffer_ptr() usize {
+pub export fn dnx_frame_buffer_ptr() usize {
     return @intFromPtr(&frame_bytes);
 }
 
-export fn dnx_dc_lookup_ptr() usize {
+pub export fn dnx_dc_lookup_ptr() usize {
     return @intFromPtr(&dc_lookup);
 }
 
-export fn dnx_ac_lookup_ptr() usize {
+pub export fn dnx_ac_lookup_ptr() usize {
     return @intFromPtr(&ac_lookup);
 }
 
-export fn dnx_run_lookup_ptr() usize {
+pub export fn dnx_run_lookup_ptr() usize {
     return @intFromPtr(&run_lookup);
 }
 
-export fn dnx_ac_info_ptr() usize {
+pub export fn dnx_ac_info_ptr() usize {
     return @intFromPtr(&ac_info);
 }
 
-export fn dnx_run_values_ptr() usize {
+pub export fn dnx_run_values_ptr() usize {
     return @intFromPtr(&run_values);
 }
 
-export fn dnx_luma_weight_ptr() usize {
+pub export fn dnx_luma_weight_ptr() usize {
     return @intFromPtr(&luma_weight);
 }
 
-export fn dnx_chroma_weight_ptr() usize {
+pub export fn dnx_chroma_weight_ptr() usize {
     return @intFromPtr(&chroma_weight);
 }
 
-export fn dnx_samples_ptr() usize {
+pub export fn dnx_samples_ptr() usize {
     return @intFromPtr(&samples);
 }
 
-export fn dnx_coefficients_ptr() usize {
+pub export fn dnx_coefficients_ptr() usize {
     return @intFromPtr(&coefficients);
 }
 
-export fn dnx_diagnostic_stage() u32 {
+pub export fn dnx_diagnostic_stage() u32 {
     return diagnostic_stage;
 }
 
-export fn dnx_diagnostic_row() u32 {
+pub export fn dnx_diagnostic_row() u32 {
     return diagnostic_row;
 }
 
-export fn dnx_diagnostic_macroblock() u32 {
+pub export fn dnx_diagnostic_macroblock() u32 {
     return diagnostic_macroblock;
 }
 
-export fn dnx_diagnostic_block() u32 {
+pub export fn dnx_diagnostic_block() u32 {
     return diagnostic_block;
 }
 
-export fn dnx_diagnostic_bit_offset() u32 {
+pub export fn dnx_diagnostic_bit_offset() u32 {
     return diagnostic_bit_offset;
 }
 
-export fn dnx_decode_row(
+pub export fn dnx_decode_row(
     row_length: u32,
     macroblock_width: u32,
     bit_depth: u32,
@@ -239,7 +239,7 @@ export fn dnx_decode_row(
     ));
 }
 
-export fn dnx_decode_frame(
+pub export fn dnx_decode_frame(
     packet_length: u32,
     macroblock_width: u32,
     macroblock_height: u32,
@@ -495,7 +495,7 @@ fn decodeRowBytes(
     return .ok;
 }
 
-export fn dnx_idct_blocks(block_count: u32, bit_depth: u32) u32 {
+pub export fn dnx_idct_blocks(block_count: u32, bit_depth: u32) u32 {
     if (block_count == 0 or block_count > MAX_BLOCKS or (bit_depth != 8 and bit_depth != 10 and bit_depth != 12)) {
         return @intFromEnum(DecodeError.invalid_arguments);
     }
@@ -666,4 +666,50 @@ fn storeBlock(
             target.* = source.*;
         }
     }
+}
+
+
+test "native decode oracle frame via export buffers" {
+    const bytes = std.Io.Dir.cwd().readFileAlloc(std.testing.io, "/tmp/beach-frame0.bin", std.testing.allocator, .limited(2 * 1024 * 1024)) catch return;
+    defer std.testing.allocator.free(bytes);
+    const data_offset: u32 = 0x280;
+    const macroblock_width: u32 = 120;
+    const macroblock_height: u32 = 68;
+    @memcpy(packet_bytes[0..bytes.len], bytes);
+    const payload_length: u32 = @intCast(bytes.len - data_offset);
+    var row: u32 = 0;
+    while (row < macroblock_height) : (row += 1) {
+        const relative_start = std.mem.readInt(u32, bytes[0x170 + row * 4 ..][0..4], .big);
+        const relative_end: u32 = if (row + 1 < macroblock_height)
+            std.mem.readInt(u32, bytes[0x170 + (row + 1) * 4 ..][0..4], .big)
+        else
+            payload_length;
+        row_starts[row] = data_offset + relative_start;
+        row_ends[row] = data_offset + relative_end;
+    }
+    const huffman = @import("dnx/huffman.zig");
+    const set = huffman.tableForCid(1272).?;
+    @memcpy(dc_lookup[0..], set.dc_lookup[0..]);
+    @memcpy(ac_lookup[0..], set.ac_lookup[0..]);
+    @memcpy(run_lookup[0..], set.run_lookup[0..]);
+    @memcpy(ac_info[0..set.ac_info.len], set.ac_info);
+    @memcpy(run_values[0..set.run.len], set.run);
+    @memcpy(luma_weight[0..], set.luma_weight[0..64]);
+    @memcpy(chroma_weight[0..], set.chroma_weight[0..64]);
+
+    const result = dnx_decode_frame(
+        @intCast(bytes.len),
+        macroblock_width,
+        macroblock_height,
+        8,
+        @intCast(set.ac_info.len),
+        @intCast(set.run.len),
+        set.eob_index,
+        set.index_bits,
+        set.level_bias,
+        set.level_shift,
+        0,
+        0,
+    );
+    try std.testing.expectEqual(@as(u32, 0), result);
 }
