@@ -14,7 +14,7 @@ const fixtureDir = path.resolve(repoRoot, args.fixtureDir ?? "samples");
 const wasmKernelPath = path.join(repoRoot, "wasm/generated/dnx_idct_kernel.wasm");
 const zigDecoderPath = path.join(repoRoot, "wasm/generated/dnx_row_decoder.wasm");
 const frames = Number(args.frames ?? 3);
-const ffmpeg = args.ffmpeg ?? process.env.FFMPEG ?? findExecutable("ffmpeg") ?? "/opt/homebrew/bin/ffmpeg";
+const ffmpeg = args.ffmpeg ?? process.env.FFMPEG ?? findExecutable("ffmpeg");
 const source = args.source ?? process.env.DNX_SOURCE ?? firstExisting([
   path.join(repoRoot, "samples/source.mov")
 ]);
@@ -615,6 +615,7 @@ async function assertCodecSessionDecodesAllFrames(decoder, fixture) {
 }
 
 async function assertContainerColorMetadata(decoder, sourcePath) {
+  assertExecutable(ffmpeg);
   const tmp = await mkdtemp(path.join(tmpdir(), "dnx-color-metadata-"));
   try {
     const output = path.join(tmp, "tagged.mov");
@@ -623,8 +624,9 @@ async function assertContainerColorMetadata(decoder, sourcePath) {
       "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc",
       "-movflags", "write_colr", output
     ], { cwd: repoRoot, stdio: "inherit" });
-    if (result.status !== 0) {
-      throw new Error("Failed to remux the DNx container-color metadata contract fixture.");
+    if (result.error || result.status !== 0) {
+      const detail = result.error ? `: ${result.error.message}` : ` (exit ${result.status})`;
+      throw new Error(`Failed to remux the DNx container-color metadata contract fixture${detail}.`);
     }
     const decoded = await decoder.decodeViaCodecSession(output);
     assertEqual(decoded.frames.length > 0, true, "container color metadata decoded frame");
